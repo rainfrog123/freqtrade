@@ -1342,11 +1342,27 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
-            features_labels = pd.DataFrame()
+            df = pd.DataFrame()
+
+            features = []
+            for i in range(5):
+                features.append(f'rsi_-{i}')
+
+
             for trade in results['strategy']['test']['trades']:
-                features_labels = features_labels.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
+                df = df.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
+
+                df.loc[df.index[-1], 'is_short'] = trade['is_short']
+                df.loc[df.index[-1], 'profit_ratio'] = trade['profit_ratio']
+            features.extend(['is_short', 'profit_ratio'])
+            df = df[features]
+            print('1')
+                            # df = df[features], 'is_short', ''profit_ratio']
+
+            # trade['is_short'] trade['profit_ratio']
+
             # features
-            # features_labels = features_labels[]
+            # df = df[]
 
 
 
