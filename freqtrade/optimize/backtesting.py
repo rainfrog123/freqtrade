@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 from numpy import nan
 from pandas import DataFrame
+from pyexpat import features
 
 from freqtrade import constants
 from freqtrade.configuration import TimeRange, validate_config_consistency
@@ -1205,8 +1206,9 @@ class Backtesting:
             max_open_trades = 0
 
         # need to reprocess data every time to populate signals
+        global training_data
         preprocessed = self.strategy.advise_all_indicators(data)
-
+        training_data = preprocessed.copy()
         # Trim startup period from analyzed dataframe
         preprocessed_tmp = trim_dataframes(preprocessed, timerange, self.required_startup)
 
@@ -1340,4 +1342,15 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
-            print('what the fuck')
+            features_labels = pd.DataFrame()
+            for trade in results['strategy']['test']['trades']:
+                features_labels = features_labels.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
+            # features
+            # features_labels = features_labels[]
+
+
+
+
+
+
+                # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
