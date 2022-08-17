@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# # flake8: noqa
 """
 Main Freqtrade bot script.
 Read the documentation to know what cli arguments you need.
@@ -25,7 +26,7 @@ def main(sysargv: List[str] = None) -> None:
     This function will initiate the bot and start the trading loop.
     :return: None
     """
-
+    print('Welcome to Freqtrade!')
     return_code: Any = 1
     try:
         setup_logging_pre()
