@@ -1,5 +1,5 @@
 # pragma pylint: disable=missing-docstring, W0212, too-many-arguments
-
+# flake8: noqa
 """
 This module contains the backtesting logic
 """
@@ -1102,9 +1102,8 @@ class Backtesting:
                 # max_open_trades must be respected
                 # don't open on the last row
                 trade_dir = self.check_for_trade_entry(row)
-                if (
-                    (position_stacking or len(open_trades[pair]) == 0)
-                    and self.trade_slot_available(max_open_trades, open_trade_count_start)
+                if ( (position_stacking or len(open_trades[pair]) == 0) and
+                     self.trade_slot_available(max_open_trades, open_trade_count_start)
                     and current_time != end_date
                     and trade_dir is not None
                     and not PairLocks.is_pair_locked(pair, row[DATE_IDX], trade_dir)
