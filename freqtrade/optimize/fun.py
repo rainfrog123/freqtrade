@@ -2,3 +2,4 @@
 
 grocery = ['bread', 'milk', 'butter']
 enumerateGrocery = enumerate(grocery)
+print('testout')

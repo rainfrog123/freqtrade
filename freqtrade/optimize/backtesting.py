@@ -1340,3 +1340,4 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
+            print('what the fuck')
