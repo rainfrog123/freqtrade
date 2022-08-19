@@ -1348,15 +1348,23 @@ class Backtesting:
             for i in range(5):
                 features.append(f'rsi_-{i}')
 
-
             for trade in results['strategy']['test']['trades']:
-                df = df.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
+                # df = df.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
 
+                df = pd.concat([df,training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']]],axis = 0)
                 df.loc[df.index[-1], 'is_short'] = trade['is_short']
                 df.loc[df.index[-1], 'profit_ratio'] = trade['profit_ratio']
-            features.extend(['is_short', 'profit_ratio'])
+
+            df.loc[(df['is_short'] == True) & (df['profit_ratio'] > 0.0), 'label'] = 'true_short'
+            df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
+            df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
+            df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
+
+            features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             df = df[features]
-            print('1')
+            df.to_json('test.json')
+
+
                             # df = df[features], 'is_short', ''profit_ratio']
 
             # trade['is_short'] trade['profit_ratio']
