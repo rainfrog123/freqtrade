@@ -1362,7 +1362,8 @@ class Backtesting:
 
             features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             df = df[features]
-            df.to_json('test.json')
+            df.to_json(f'{datetime.now()}.json')
+
 
 
                             # df = df[features], 'is_short', ''profit_ratio']
