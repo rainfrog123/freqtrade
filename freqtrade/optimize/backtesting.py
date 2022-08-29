@@ -1361,9 +1361,9 @@ class Backtesting:
             show_backtest_results(self.config, self.results)
             df = pd.DataFrame()
 
-            features = []
-            for i in range(5):
-                features.append(f'rsi_-{i}')
+            # features = []
+            # for i in range(5):
+            #     features.append(f'rsi_-{i}')
 
             for trade in results['strategy']['test']['trades']:
                 # df = df.append(training_data['ETH/USDT'].loc[training_data['ETH/USDT']['date'] == trade['open_date']].squeeze(), ignore_index=True)
@@ -1377,8 +1377,8 @@ class Backtesting:
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
 
-            features.extend(['is_short', 'profit_ratio', 'date', 'label'])
-            df = df[features]
+            # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
+            # df = df[features]
             df.to_json(f'{datetime.now()}.json')
 
 
