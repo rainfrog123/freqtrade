@@ -1377,19 +1377,10 @@ class Backtesting:
             # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             # df = df[features]
             df.to_json(f'{datetime.now()}.json')
-
-
-
                             # df = df[features], 'is_short', ''profit_ratio']
 
             # trade['is_short'] trade['profit_ratio']
 
             # features
             # df = df[]
-
-
-
-
-
-
                 # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
