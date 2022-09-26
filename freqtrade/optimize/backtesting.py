@@ -1,5 +1,5 @@
 # pragma pylint: disable=missing-docstring, W0212, too-many-arguments
-
+# flake8: noqa
 """
 This module contains the backtesting logic
 """
@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 from numpy import nan
 from pandas import DataFrame
+from pyexpat import features
 
 from freqtrade import constants
 from freqtrade.configuration import TimeRange, validate_config_consistency
@@ -1135,9 +1136,8 @@ class Backtesting:
                 # max_open_trades must be respected
                 # don't open on the last row
                 trade_dir = self.check_for_trade_entry(row)
-                if (
-                    (position_stacking or len(open_trades[pair]) == 0)
-                    and self.trade_slot_available(max_open_trades, open_trade_count_start)
+                if ( (position_stacking or len(open_trades[pair]) == 0) and
+                     self.trade_slot_available(max_open_trades, open_trade_count_start)
                     and current_time != end_date
                     and trade_dir is not None
                     and not PairLocks.is_pair_locked(pair, row[DATE_IDX], trade_dir)
@@ -1227,8 +1227,9 @@ class Backtesting:
             max_open_trades = 0
 
         # need to reprocess data every time to populate signals
+        global training_data
         preprocessed = self.strategy.advise_all_indicators(data)
-
+        training_data = preprocessed.copy()
         # Trim startup period from analyzed dataframe
         preprocessed_tmp = trim_dataframes(preprocessed, timerange, self.required_startup)
 
@@ -1362,3 +1363,35 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
+            df = pd.DataFrame()
+            strat_name = 'macd'
+            # features = []
+            # for i in range(5):
+            #     features.append(f'rsi_-{i}')
+            df = training_data['ETH/USDT']
+            for trade in results['strategy'][strat_name]['trades']:
+                # df = df.append(df.loc[df['date'] == trade['open_date']].squeeze(), ignore_index=True)
+                df.loc[df['date'] == trade['open_date'], 'trade'] = 1
+                # df = pd.concat([df,df.loc[df['date'] == trade['open_date']]],axis = 0)
+                # df.loc[df.index[-1], 'is_short'] = trade['is_short']
+                # df.loc[df.index[-1], 'profit_ratio'] = trade['profit_ratio']
+                df.loc[df['date'] == trade['open_date'], 'is_short'] = trade['is_short']
+                df.loc[df['date'] == trade['open_date'], 'profit_ratio'] = trade['profit_ratio']
+
+            df.loc[(df['is_short'] == True) & (df['profit_ratio'] > 0.0), 'label'] = 'true_short'
+            df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
+            df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
+            df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
+
+            # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
+            # df = df[features]
+            df.to_json(f'{datetime.now()}.json')
+                            # df = df[features], 'is_short', ''profit_ratio']
+
+            # trade['is_short'] trade['profit_ratio']
+
+            # features
+            # df = df[]
+            #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
+            # import pandas as pd 
+            # a = pd.read_json('2022-09-23 00:41:02.932137.json')
