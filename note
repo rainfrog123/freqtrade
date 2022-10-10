@@ -1,0 +1,46 @@
+freqtrade backtesting --config config_examples/config_freqai.example.json --strategy FreqaiExampleStrategy --freqaimodel LightGBMRegressor --strategy-path freqtrade/templates --timerange 20220101-20220201
+
+freqtrade download-data -c /freqtrade/config_examples/config_freqai.example.json --timerange 20211001-20220301
+
+freqtrade backtesting --strategy minimal --timerange 20220101-20220201 -c config_test.json
+
+freqtrade download-data -c config.json
+
+freqtrade backtesting --strategy test --timerange 20220101-20220201 --cache none  -c config_test.json
+
+freqtrade new-strategy  --template advanced  --strategy advanced
+
+/usr/bin/env /freqtrade/.env/bin/python /root/.vscode-server/extensions/ms-python.python-2022.12.0/pythonFiles/lib/python/debugpy/adapter/../../debugpy/launcher 33165 -- /freqtrade/freqtrade/main.py
+
+
+freqtrade backtesting --strategy test --timerange 20220501-20220503 -c config_test.json --cache none --eps
+
+freqtrade backtesting -c config_test.json --timeframe 5m --strategy test --timerange=20220501-20220503 --export=signals --cache none --eps
+
+freqtrade backtesting-analysis -c config_test.json --cache none --eps
+
+freqtrade download-data -c config_test.json --timerange 20220901- -t 3m
+
+freqtrade backtesting --strategy test --timerange 20190301- -c config_test.json --cache none --eps
+
+freqtrade backtesting --strategy test --timerange 20190301- -c config_test.json --cache none --eps --starting-balance=100000000000
+
+freqtrade backtesting --strategy test --timerange 20210924-20210927 -c config_test.json --cache none --eps --starting-balance=100000000000 -i 3m
+
+
+
+freqtrade new-strategy --strategy full --template full
+
+freqtrade backtesting --strategy test --timerange 20080101- -c config_test.json --cache none --eps --starting-balance=100000000000 -i 3m
+
+freqtrade backtesting --strategy macd --timerange 20220901- -c config_test.json --cache none --eps --starting-balance=100000000000 -i 3m
+
+freqtrade backtesting --strategy macd --timerange 20080901- -c config_test.json --cache none --eps --starting-balance=100000000000 -i 3m
+
+freqtrade backtesting --strategy macd --timerange 20080901- -c config.json --cache none --eps --starting-balance=100000000000 -i 3m
+
+freqtrade new-strategy --template full #advanced full minimal
+
+pgrep -f "freqtrade" | xargs kill -9
+
+freqtrade download-data -c config.json --timerange 20080901- -t 3m 5m 15m 30m 1h
