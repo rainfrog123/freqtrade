@@ -1364,7 +1364,7 @@ class Backtesting:
             # Show backtest results
             show_backtest_results(self.config, self.results)
             df = pd.DataFrame()
-            strat_name = 'macd'
+            strat_name = 'MACDStrategy_label'
             # features = []
             # for i in range(5):
             #     features.append(f'rsi_-{i}')
@@ -1393,5 +1393,5 @@ class Backtesting:
             # features
             # df = df[]
             #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
-            # import pandas as pd 
+            # import pandas as pd
             # a = pd.read_json('2022-09-23 00:41:02.932137.json')

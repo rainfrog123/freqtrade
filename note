@@ -37,14 +37,14 @@ freqtrade backtesting --strategy macd --timerange 20220901- -c config_test.json 
 
 freqtrade backtesting --strategy macd --timerange 20080901- -c config_test.json --cache none --eps --starting-balance=100000000000 -i 3m
 
-freqtrade backtesting --strategy macd --timerange 20080901- -c config.json --cache none --eps --starting-balance=100000000000 -i 3m
+freqtrade backtesting --strategy MACDStrategy_label --timerange 20080901- -c config.json --cache none --eps --starting-balance=100000000000 -i 3m
 
 freqtrade new-strategy --template full #advanced full minimal
 
 pgrep -f "freqtrade" | xargs kill -9
 
 freqtrade download-data -c config.json --timerange 20080901- -t 3m 5m 15m 30m 1h
-freqtrade download-data -c config.json --timerange 20220901- -t 3m 5m 15m 30m 1h
+freqtrade download-data -c config.json --timerange 20220901- -t 1m 3m 5m 15m 30m 1h
 
 az vm create --resource-group Singapore --name freqtrade --image UbuntuLTS --admin-username freqtrade --generate-ssh-keys
 
