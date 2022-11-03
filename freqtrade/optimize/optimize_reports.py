@@ -173,7 +173,7 @@ def generate_tag_metrics(tag_type: str,
     tabular_data = []
 
     if tag_type in results.columns:
-        for tag, count in results[tag_type].value_counts().iteritems():
+        for tag, count in results[tag_type].value_counts().items():
             result = results[results[tag_type] == tag]
             if skip_nan and result['profit_abs'].isnull().all():
                 continue
@@ -199,7 +199,7 @@ def generate_exit_reason_stats(max_open_trades: int, results: DataFrame) -> List
     """
     tabular_data = []
 
-    for reason, count in results['exit_reason'].value_counts().iteritems():
+    for reason, count in results['exit_reason'].value_counts().items():
         result = results.loc[results['exit_reason'] == reason]
 
         profit_mean = result['profit_ratio'].mean()
@@ -361,7 +361,7 @@ def generate_daily_stats(results: DataFrame) -> Dict[str, Any]:
     winning_days = sum(daily_profit > 0)
     draw_days = sum(daily_profit == 0)
     losing_days = sum(daily_profit < 0)
-    daily_profit_list = [(str(idx.date()), val) for idx, val in daily_profit.iteritems()]
+    daily_profit_list = [(str(idx.date()), val) for idx, val in daily_profit.items()]
 
     return {
         'backtest_best_day': best_rel,
@@ -408,10 +408,10 @@ def generate_strategy_stats(pairlist: List[str],
 
     exit_reason_stats = generate_exit_reason_stats(max_open_trades=max_open_trades,
                                                    results=results)
-    left_open_results = generate_pair_metrics(pairlist, stake_currency=stake_currency,
-                                              starting_balance=start_balance,
-                                              results=results.loc[results['is_open']],
-                                              skip_nan=True)
+    left_open_results = generate_pair_metrics(
+        pairlist, stake_currency=stake_currency, starting_balance=start_balance,
+        results=results.loc[results['exit_reason'] == 'force_exit'], skip_nan=True)
+
     daily_stats = generate_daily_stats(results)
     trade_stats = generate_trading_stats(results)
     best_pair = max([pair for pair in pair_results if pair['key'] != 'TOTAL'],

@@ -1443,8 +1443,9 @@ def test_api_plot_config(botclient):
     assert isinstance(rc.json()['subplots'], dict)
 
 
-def test_api_strategies(botclient):
+def test_api_strategies(botclient, tmpdir):
     ftbot, client = botclient
+    ftbot.config['user_data_dir'] = Path(tmpdir)
 
     rc = client_get(client, f"{BASE_URI}/strategies")
 
@@ -1456,6 +1457,7 @@ def test_api_strategies(botclient):
         'InformativeDecoratorTest',
         'StrategyTestV2',
         'StrategyTestV3',
+        'StrategyTestV3CustomEntryPrice',
         'StrategyTestV3Futures',
         'freqai_test_classifier',
         'freqai_test_multimodel_strat',
@@ -1476,6 +1478,10 @@ def test_api_strategy(botclient):
 
     rc = client_get(client, f"{BASE_URI}/strategy/NoStrat")
     assert_response(rc, 404)
+
+    # Disallow base64 strategies
+    rc = client_get(client, f"{BASE_URI}/strategy/xx:cHJpbnQoImhlbGxvIHdvcmxkIik=")
+    assert_response(rc, 500)
 
 
 def test_list_available_pairs(botclient):
@@ -1649,6 +1655,11 @@ def test_api_backtesting(botclient, mocker, fee, caplog, tmpdir):
     assert result['status'] == 'reset'
     assert not result['running']
     assert result['status_msg'] == 'Backtest reset'
+
+    # Disallow base64 strategies
+    data['strategy'] = "xx:cHJpbnQoImhlbGxvIHdvcmxkIik="
+    rc = client_post(client, f"{BASE_URI}/backtest", data=json.dumps(data))
+    assert_response(rc, 500)
 
 
 def test_api_backtest_history(botclient, mocker, testdatadir):

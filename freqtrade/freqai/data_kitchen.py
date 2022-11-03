@@ -107,9 +107,8 @@ class FreqaiDataKitchen:
     ) -> None:
         """
         Set the paths to the data for the present coin/botloop
-        :params:
-        metadata: dict = strategy furnished pair metadata
-        trained_timestamp: int = timestamp of most recent training
+        :param metadata: dict = strategy furnished pair metadata
+        :param trained_timestamp: int = timestamp of most recent training
         """
         self.full_path = Path(
             self.config["user_data_dir"] / "models" / str(self.freqai_config.get("identifier"))
@@ -129,24 +128,19 @@ class FreqaiDataKitchen:
         Given the dataframe for the full history for training, split the data into
         training and test data according to user specified parameters in configuration
         file.
-        :filtered_dataframe: cleaned dataframe ready to be split.
-        :labels: cleaned labels ready to be split.
+        :param filtered_dataframe: cleaned dataframe ready to be split.
+        :param labels: cleaned labels ready to be split.
         """
         feat_dict = self.freqai_config["feature_parameters"]
+
+        if 'shuffle' not in self.freqai_config['data_split_parameters']:
+            self.freqai_config["data_split_parameters"].update({'shuffle': False})
 
         weights: npt.ArrayLike
         if feat_dict.get("weight_factor", 0) > 0:
             weights = self.set_weights_higher_recent(len(filtered_dataframe))
         else:
             weights = np.ones(len(filtered_dataframe))
-
-        if feat_dict.get("stratify_training_data", 0) > 0:
-            stratification = np.zeros(len(filtered_dataframe))
-            for i in range(1, len(stratification)):
-                if i % feat_dict.get("stratify_training_data", 0) == 0:
-                    stratification[i] = 1
-        else:
-            stratification = None
 
         if self.freqai_config.get('data_split_parameters', {}).get('test_size', 0.1) != 0:
             (
@@ -160,7 +154,6 @@ class FreqaiDataKitchen:
                 filtered_dataframe[: filtered_dataframe.shape[0]],
                 labels,
                 weights,
-                stratify=stratification,
                 **self.config["freqai"]["data_split_parameters"],
             )
         else:
@@ -195,13 +188,14 @@ class FreqaiDataKitchen:
         remove all NaNs. Any row with a NaN is removed from training dataset or replaced with
         0s in the prediction dataset. However, prediction dataset do_predict will reflect any
         row that had a NaN and will shield user from that prediction.
-        :params:
-        :unfiltered_df: the full dataframe for the present training period
-        :training_feature_list: list, the training feature list constructed by
-        self.build_feature_list() according to user specified parameters in the configuration file.
-        :labels: the labels for the dataset
-        :training_filter: boolean which lets the function know if it is training data or
-        prediction data to be filtered.
+
+        :param unfiltered_df: the full dataframe for the present training period
+        :param training_feature_list: list, the training feature list constructed by
+                                      self.build_feature_list() according to user specified
+                                      parameters in the configuration file.
+        :param labels: the labels for the dataset
+        :param training_filter: boolean which lets the function know if it is training data or
+                                prediction data to be filtered.
         :returns:
         :filtered_df: dataframe cleaned of NaNs and only containing the user
         requested feature set.
@@ -210,18 +204,21 @@ class FreqaiDataKitchen:
         filtered_df = unfiltered_df.filter(training_feature_list, axis=1)
         filtered_df = filtered_df.replace([np.inf, -np.inf], np.nan)
 
-        drop_index = pd.isnull(filtered_df).any(1)  # get the rows that have NaNs,
+        drop_index = pd.isnull(filtered_df).any(axis=1)  # get the rows that have NaNs,
         drop_index = drop_index.replace(True, 1).replace(False, 0)  # pep8 requirement.
         if (training_filter):
             const_cols = list((filtered_df.nunique() == 1).loc[lambda x: x].index)
             if const_cols:
                 filtered_df = filtered_df.filter(filtered_df.columns.difference(const_cols))
+                self.data['constant_features_list'] = const_cols
                 logger.warning(f"Removed features {const_cols} with constant values.")
+            else:
+                self.data['constant_features_list'] = []
             # we don't care about total row number (total no. datapoints) in training, we only care
             # about removing any row with NaNs
             # if labels has multiple columns (user wants to train multiple modelEs), we detect here
             labels = unfiltered_df.filter(label_list, axis=1)
-            drop_index_labels = pd.isnull(labels).any(1)
+            drop_index_labels = pd.isnull(labels).any(axis=1)
             drop_index_labels = drop_index_labels.replace(True, 1).replace(False, 0)
             dates = unfiltered_df['date']
             filtered_df = filtered_df[
@@ -247,9 +244,11 @@ class FreqaiDataKitchen:
             self.data["filter_drop_index_training"] = drop_index
 
         else:
+            if len(self.data['constant_features_list']):
+                filtered_df = self.check_pred_labels(filtered_df)
             # we are backtesting so we need to preserve row number to send back to strategy,
             # so now we use do_predict to avoid any prediction based on a NaN
-            drop_index = pd.isnull(filtered_df).any(1)
+            drop_index = pd.isnull(filtered_df).any(axis=1)
             self.data["filter_drop_index_prediction"] = drop_index
             filtered_df.fillna(0, inplace=True)
             # replacing all NaNs with zeros to avoid issues in 'prediction', but any prediction
@@ -291,8 +290,8 @@ class FreqaiDataKitchen:
     def normalize_data(self, data_dictionary: Dict) -> Dict[Any, Any]:
         """
         Normalize all data in the data_dictionary according to the training dataset
-        :params:
-        :data_dictionary: dictionary containing the cleaned and split training/test data/labels
+        :param data_dictionary: dictionary containing the cleaned and
+                                split training/test data/labels
         :returns:
         :data_dictionary: updated dictionary with standardized values.
         """
@@ -355,13 +354,19 @@ class FreqaiDataKitchen:
         :param df: Dataframe to be standardized
         """
 
-        for item in df.keys():
-            df[item] = (
-                2
-                * (df[item] - self.data[f"{item}_min"])
-                / (self.data[f"{item}_max"] - self.data[f"{item}_min"])
-                - 1
-            )
+        train_max = [None] * len(df.keys())
+        train_min = [None] * len(df.keys())
+
+        for i, item in enumerate(df.keys()):
+            train_max[i] = self.data[f"{item}_max"]
+            train_min[i] = self.data[f"{item}_min"]
+
+        train_max_series = pd.Series(train_max, index=df.keys())
+        train_min_series = pd.Series(train_min, index=df.keys())
+
+        df = (
+            2 * (df - train_min_series) / (train_max_series - train_min_series) - 1
+        )
 
         return df
 
@@ -466,6 +471,22 @@ class FreqaiDataKitchen:
 
         return df
 
+    def check_pred_labels(self, df_predictions: DataFrame) -> DataFrame:
+        """
+        Check that prediction feature labels match training feature labels.
+        :param df_predictions: incoming predictions
+        """
+        constant_labels = self.data['constant_features_list']
+        df_predictions = df_predictions.filter(
+            df_predictions.columns.difference(constant_labels)
+        )
+        logger.warning(
+            f"Removed {len(constant_labels)} features from prediction features, "
+            f"these were considered constant values during most recent training."
+        )
+
+        return df_predictions
+
     def principal_component_analysis(self) -> None:
         """
         Performs Principal Component Analysis on the data for dimensionality reduction
@@ -522,8 +543,7 @@ class FreqaiDataKitchen:
     def pca_transform(self, filtered_dataframe: DataFrame) -> None:
         """
         Use an existing pca transform to transform data into components
-        :params:
-        filtered_dataframe: DataFrame = the cleaned dataframe
+        :param filtered_dataframe: DataFrame = the cleaned dataframe
         """
         pca_components = self.pca.transform(filtered_dataframe)
         self.data_dictionary["prediction_features"] = pd.DataFrame(
@@ -567,8 +587,7 @@ class FreqaiDataKitchen:
         """
         Build/inference a Support Vector Machine to detect outliers
         in training data and prediction
-        :params:
-        predict: bool = If true, inference an existing SVM model, else construct one
+        :param predict: bool = If true, inference an existing SVM model, else construct one
         """
 
         if self.keras:
@@ -653,11 +672,11 @@ class FreqaiDataKitchen:
         Use DBSCAN to cluster training data and remove "noisy" data (read outliers).
         User controls this via the config param `DBSCAN_outlier_pct` which indicates the
         pct of training data that they want to be considered outliers.
-        :params:
-        predict: bool = If False (training), iterate to find the best hyper parameters to match
-        user requested outlier percent target. If True (prediction), use the parameters
-        determined from the previous training to estimate if the current prediction point
-        is an outlier.
+        :param predict: bool = If False (training), iterate to find the best hyper parameters
+                        to match user requested outlier percent target.
+                        If True (prediction), use the parameters determined from
+                        the previous training to estimate if the current prediction point
+                        is an outlier.
         """
 
         if predict:
@@ -808,7 +827,7 @@ class FreqaiDataKitchen:
                 :, :no_prev_pts
             ]
         distances = distances.replace([np.inf, -np.inf], np.nan)
-        drop_index = pd.isnull(distances).any(1)
+        drop_index = pd.isnull(distances).any(axis=1)
         distances = distances[drop_index == 0]
 
         inliers = pd.DataFrame(index=distances.index)
@@ -881,6 +900,7 @@ class FreqaiDataKitchen:
         """
         column_names = dataframe.columns
         features = [c for c in column_names if "%" in c]
+
         if not features:
             raise OperationalException("Could not find any features!")
 
@@ -944,6 +964,9 @@ class FreqaiDataKitchen:
                 continue
             append_df[f"{label}_mean"] = self.data["labels_mean"][label]
             append_df[f"{label}_std"] = self.data["labels_std"][label]
+
+        for extra_col in self.data["extra_returns_per_train"]:
+            append_df[f"{extra_col}"] = self.data["extra_returns_per_train"][extra_col]
 
         append_df["do_predict"] = do_predict
         if self.freqai_config["feature_parameters"].get("DI_threshold", 0) > 0:
@@ -1114,6 +1137,51 @@ class FreqaiDataKitchen:
             if pair not in self.all_pairs:
                 self.all_pairs.append(pair)
 
+    def extract_corr_pair_columns_from_populated_indicators(
+        self,
+        dataframe: DataFrame
+    ) -> Dict[str, DataFrame]:
+        """
+        Find the columns of the dataframe corresponding to the corr_pairlist, save them
+        in a dictionary to be reused and attached to other pairs.
+
+        :param dataframe: fully populated dataframe (current pair + corr_pairs)
+        :return: corr_dataframes, dictionary of dataframes to be attached
+                 to other pairs in same candle.
+        """
+        corr_dataframes: Dict[str, DataFrame] = {}
+        pairs = self.freqai_config["feature_parameters"].get("include_corr_pairlist", [])
+
+        for pair in pairs:
+            valid_strs = [f"%-{pair}", f"%{pair}", f"%_{pair}"]
+            pair_cols = [col for col in dataframe.columns if
+                         any(substr in col for substr in valid_strs)]
+            pair_cols.insert(0, 'date')
+            corr_dataframes[pair] = dataframe.filter(pair_cols, axis=1)
+
+        return corr_dataframes
+
+    def attach_corr_pair_columns(self, dataframe: DataFrame,
+                                 corr_dataframes: Dict[str, DataFrame],
+                                 current_pair: str) -> DataFrame:
+        """
+        Attach the existing corr_pair dataframes to the current pair dataframe before training
+
+        :param dataframe: current pair strategy dataframe, indicators populated already
+        :param corr_dataframes: dictionary of saved dataframes from earlier in the same candle
+        :param current_pair: current pair to which we will attach corr pair dataframe
+        :return:
+        :dataframe: current pair dataframe of populated indicators, concatenated with corr_pairs
+                    ready for training
+        """
+        pairs = self.freqai_config["feature_parameters"].get("include_corr_pairlist", [])
+
+        for pair in pairs:
+            if current_pair != pair:
+                dataframe = dataframe.merge(corr_dataframes[pair], how='left', on='date')
+
+        return dataframe
+
     def use_strategy_to_populate_indicators(
         self,
         strategy: IStrategy,
@@ -1121,26 +1189,25 @@ class FreqaiDataKitchen:
         base_dataframes: dict = {},
         pair: str = "",
         prediction_dataframe: DataFrame = pd.DataFrame(),
+        do_corr_pairs: bool = True,
     ) -> DataFrame:
         """
-        Use the user defined strategy for populating indicators during
-        retrain
-        :params:
-        strategy: IStrategy = user defined strategy object
-        corr_dataframes: dict = dict containing the informative pair dataframes
-        (for user defined timeframes)
-        base_dataframes: dict = dict containing the current pair dataframes
-        (for user defined timeframes)
-        metadata: dict = strategy furnished pair metadata
-        :returns:
+        Use the user defined strategy for populating indicators during retrain
+        :param strategy: IStrategy = user defined strategy object
+        :param corr_dataframes: dict = dict containing the informative pair dataframes
+                                (for user defined timeframes)
+        :param base_dataframes: dict = dict containing the current pair dataframes
+                                (for user defined timeframes)
+        :param metadata: dict = strategy furnished pair metadata
+        :return:
         dataframe: DataFrame = dataframe containing populated indicators
         """
 
         # for prediction dataframe creation, we let dataprovider handle everything in the strategy
         # so we create empty dictionaries, which allows us to pass None to
         # `populate_any_indicators()`. Signaling we want the dp to give us the live dataframe.
-        tfs = self.freqai_config["feature_parameters"].get("include_timeframes")
-        pairs = self.freqai_config["feature_parameters"].get("include_corr_pairlist", [])
+        tfs: List[str] = self.freqai_config["feature_parameters"].get("include_timeframes")
+        pairs: List[str] = self.freqai_config["feature_parameters"].get("include_corr_pairlist", [])
         if not prediction_dataframe.empty:
             dataframe = prediction_dataframe.copy()
             for tf in tfs:
@@ -1163,15 +1230,18 @@ class FreqaiDataKitchen:
                 informative=base_dataframes[tf],
                 set_generalized_indicators=sgi
             )
-            if pairs:
-                for i in pairs:
-                    if pair in i:
-                        continue  # dont repeat anything from whitelist
+
+        # ensure corr pairs are always last
+        for corr_pair in pairs:
+            if pair == corr_pair:
+                continue  # dont repeat anything from whitelist
+            for tf in tfs:
+                if pairs and do_corr_pairs:
                     dataframe = strategy.populate_any_indicators(
-                        i,
+                        corr_pair,
                         dataframe.copy(),
                         tf,
-                        informative=corr_dataframes[i][tf]
+                        informative=corr_dataframes[corr_pair][tf]
                     )
 
         self.get_unique_classes_from_labels(dataframe)

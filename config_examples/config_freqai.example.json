@@ -18,13 +18,8 @@
         "name": "binance",
         "key": "",
         "secret": "",
-        "ccxt_config": {
-            "enableRateLimit": true
-        },
-        "ccxt_async_config": {
-            "enableRateLimit": true,
-            "rateLimit": 200
-        },
+        "ccxt_config": {},
+        "ccxt_async_config": {},
         "pair_whitelist": [
             "1INCH/USDT",
             "ALGO/USDT"
@@ -78,7 +73,7 @@
                 10,
                 20
             ],
-            "plot_feature_importance": false
+            "plot_feature_importances": 0
         },
         "data_split_parameters": {
             "test_size": 0.33,
