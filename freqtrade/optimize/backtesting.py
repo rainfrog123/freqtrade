@@ -1366,26 +1366,23 @@ class Backtesting:
             #     features.append(f'rsi_-{i}')
             df = training_data['ETH/USDT']
             for trade in results['strategy'][strat_name]['trades']:
-                # df = df.append(df.loc[df['date'] == trade['open_date']].squeeze(), ignore_index=True)
                 df.loc[df['date'] == trade['open_date'], 'trade'] = 1
+                df.loc[df['date'] == trade['open_date'], 'is_short'] = trade['is_short']
+                df.loc[df['date'] == trade['open_date'], 'profit_ratio'] = trade['profit_ratio']
+                # df = df.append(df.loc[df['date'] == trade['open_date']].squeeze(), ignore_index=True)
                 # df = pd.concat([df,df.loc[df['date'] == trade['open_date']]],axis = 0)
                 # df.loc[df.index[-1], 'is_short'] = trade['is_short']
                 # df.loc[df.index[-1], 'profit_ratio'] = trade['profit_ratio']
-                df.loc[df['date'] == trade['open_date'], 'is_short'] = trade['is_short']
-                df.loc[df['date'] == trade['open_date'], 'profit_ratio'] = trade['profit_ratio']
-
             df.loc[(df['is_short'] == True) & (df['profit_ratio'] > 0.0), 'label'] = 'true_short'
             df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
-
+            df.to_json(f'{datetime.now()}.json')
+            
             # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             # df = df[features]
-            df.to_json(f'{datetime.now()}.json')
-                            # df = df[features], 'is_short', ''profit_ratio']
-
+            # df = df[features], 'is_short', ''profit_ratio']
             # trade['is_short'] trade['profit_ratio']
-
             # features
             # df = df[]
             #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
