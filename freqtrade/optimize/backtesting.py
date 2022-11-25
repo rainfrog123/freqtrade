@@ -1363,7 +1363,7 @@ class Backtesting:
             # Show backtest results
             show_backtest_results(self.config, self.results)
             df = pd.DataFrame()
-            strat_name = 'MACDStrategy_label'
+            strat_name = self.config['strategy']
             # features = []
             # for i in range(5):
             #     features.append(f'rsi_-{i}')
@@ -1380,7 +1380,9 @@ class Backtesting:
             df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
-            df.to_json(f'{datetime.now()}.json')
+            import os 
+            path = os.path.join('/allah/freqtrade/json_dict', f'{datetime.now()}.json')
+            df.to_json(path)
             
             # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             # df = df[features]
