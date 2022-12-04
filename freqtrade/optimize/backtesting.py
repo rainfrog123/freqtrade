@@ -1381,7 +1381,7 @@ class Backtesting:
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
             import os 
-            path = os.path.join('/allah/freqtrade/json_dict', f'{datetime.now()}.json')
+            path = os.path.join('/allah/freqtrade/json_dict', f'{datetime.now()}_{strat_name}.json')
             df.to_json(path)
             
             # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
