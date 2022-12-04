@@ -107,6 +107,8 @@ target/
 .mypy_cache/
 
 #exceptions
+!config.json
+!user_data/strategies
 !*.gitkeep
 !config_examples/config_binance.example.json
 !config_examples/config_bittrex.example.json
