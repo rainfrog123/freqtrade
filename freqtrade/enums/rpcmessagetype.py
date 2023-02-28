@@ -21,6 +21,7 @@ class RPCMessageType(str, Enum):
 
     WHITELIST = 'whitelist'
     ANALYZED_DF = 'analyzed_df'
+    NEW_CANDLE = 'new_candle'
 
     def __repr__(self):
         return self.value
@@ -35,3 +36,9 @@ class RPCRequestType(str, Enum):
 
     WHITELIST = 'whitelist'
     ANALYZED_DF = 'analyzed_df'
+
+    def __str__(self):
+        return self.value
+
+
+NO_ECHO_MESSAGES = (RPCMessageType.ANALYZED_DF, RPCMessageType.WHITELIST, RPCMessageType.NEW_CANDLE)

@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-18.04, ubuntu-20.04, ubuntu-22.04 ]
+        os: [ ubuntu-20.04, ubuntu-22.04 ]
         python-version: ["3.8", "3.9", "3.10"]
 
     steps:
@@ -88,15 +88,15 @@ jobs:
       run: |
         cp config_examples/config_bittrex.example.json config.json
         freqtrade create-userdir --userdir user_data
-        freqtrade hyperopt --datadir tests/testdata -e 5 --strategy SampleStrategy --hyperopt-loss SharpeHyperOptLossDaily --print-all
-
-    - name: Flake8
-      run: |
-        flake8
+        freqtrade hyperopt --datadir tests/testdata -e 6 --strategy SampleStrategy --hyperopt-loss SharpeHyperOptLossDaily --print-all
 
     - name: Sort imports (isort)
       run: |
         isort --check .
+
+    - name: Run Ruff
+      run: |
+        ruff check --format=github .
 
     - name: Mypy
       run: |
@@ -148,6 +148,19 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew update
+        # homebrew fails to update python due to unlinking failures
+        # https://github.com/actions/runner-images/issues/6817
+        rm /usr/local/bin/2to3 || true
+        rm /usr/local/bin/2to3-3.11 || true
+        rm /usr/local/bin/idle3 || true
+        rm /usr/local/bin/idle3.11 || true
+        rm /usr/local/bin/pydoc3 || true
+        rm /usr/local/bin/pydoc3.11 || true
+        rm /usr/local/bin/python3 || true
+        rm /usr/local/bin/python3.11 || true
+        rm /usr/local/bin/python3-config || true
+        rm /usr/local/bin/python3.11-config || true
+
         brew install hdf5 c-blosc
         python -m pip install --upgrade pip wheel
         export LD_LIBRARY_PATH=${HOME}/dependencies/lib:$LD_LIBRARY_PATH
@@ -173,13 +186,13 @@ jobs:
         freqtrade create-userdir --userdir user_data
         freqtrade hyperopt --datadir tests/testdata -e 5 --strategy SampleStrategy --hyperopt-loss SharpeHyperOptLossDaily --print-all
 
-    - name: Flake8
-      run: |
-        flake8
-
     - name: Sort imports (isort)
       run: |
         isort --check .
+
+    - name: Run Ruff
+      run: |
+        ruff check --format=github .
 
     - name: Mypy
       run: |
@@ -235,9 +248,9 @@ jobs:
         freqtrade create-userdir --userdir user_data
         freqtrade hyperopt --datadir tests/testdata -e 5 --strategy SampleStrategy --hyperopt-loss SharpeHyperOptLossDaily --print-all
 
-    - name: Flake8
+    - name: Run Ruff
       run: |
-        flake8
+        ruff check --format=github .
 
     - name: Mypy
       run: |
@@ -347,6 +360,8 @@ jobs:
         pip install -e .
 
     - name: Tests incl. ccxt compatibility tests
+      env:
+        CI_WEB_PROXY: http://152.67.78.211:13128
       run: |
         pytest --random-order --cov=freqtrade --cov-config=.coveragerc --longrun
 
@@ -410,7 +425,7 @@ jobs:
         python setup.py sdist bdist_wheel
 
     - name: Publish to PyPI (Test)
-      uses: pypa/gh-action-pypi-publish@v1.5.1
+      uses: pypa/gh-action-pypi-publish@v1.6.4
       if: (github.event_name == 'release')
       with:
         user: __token__
@@ -418,7 +433,7 @@ jobs:
         repository_url: https://test.pypi.org/legacy/
 
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.5.1
+      uses: pypa/gh-action-pypi-publish@v1.6.4
       if: (github.event_name == 'release')
       with:
         user: __token__
