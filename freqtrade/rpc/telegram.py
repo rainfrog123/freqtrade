@@ -25,7 +25,7 @@ from telegram.utils.helpers import escape_markdown
 
 from freqtrade.__init__ import __version__
 from freqtrade.constants import DUST_PER_COIN, Config
-from freqtrade.enums import RPCMessageType, SignalDirection, TradingMode
+from freqtrade.enums import MarketDirection, RPCMessageType, SignalDirection, TradingMode
 from freqtrade.exceptions import OperationalException
 from freqtrade.misc import chunks, plural, round_coin_value
 from freqtrade.persistence import Trade
@@ -129,7 +129,8 @@ class Telegram(RPCHandler):
             r'/weekly$', r'/weekly \d+$', r'/monthly$', r'/monthly \d+$',
             r'/forcebuy$', r'/forcelong$', r'/forceshort$',
             r'/forcesell$', r'/forceexit$',
-            r'/edge$', r'/health$', r'/help$', r'/version$'
+            r'/edge$', r'/health$', r'/help$', r'/version$', r'/marketdir (long|short|even|none)$',
+            r'/marketdir$'
         ]
         # Create keys for generation
         valid_keys_print = [k.replace('$', '') for k in valid_keys]
@@ -197,6 +198,7 @@ class Telegram(RPCHandler):
             CommandHandler('health', self._health),
             CommandHandler('help', self._help),
             CommandHandler('version', self._version),
+            CommandHandler('marketdir', self._changemarketdir)
         ]
         callbacks = [
             CallbackQueryHandler(self._status_table, pattern='update_status_table'),
@@ -319,31 +321,33 @@ class Telegram(RPCHandler):
                 and self._rpc._fiat_converter):
             msg['profit_fiat'] = self._rpc._fiat_converter.convert_amount(
                 msg['profit_amount'], msg['stake_currency'], msg['fiat_currency'])
-            msg['profit_extra'] = (
-                f" / {msg['profit_fiat']:.3f} {msg['fiat_currency']}")
+            msg['profit_extra'] = f" / {msg['profit_fiat']:.3f} {msg['fiat_currency']}"
         else:
             msg['profit_extra'] = ''
         msg['profit_extra'] = (
             f" ({msg['gain']}: {msg['profit_amount']:.8f} {msg['stake_currency']}"
             f"{msg['profit_extra']})")
+
         is_fill = msg['type'] == RPCMessageType.EXIT_FILL
         is_sub_trade = msg.get('sub_trade')
         is_sub_profit = msg['profit_amount'] != msg.get('cumulative_profit')
-        profit_prefix = ('Sub ' if is_sub_profit
-                         else 'Cumulative ') if is_sub_trade else ''
+        profit_prefix = ('Sub ' if is_sub_profit else 'Cumulative ') if is_sub_trade else ''
         cp_extra = ''
+        exit_wording = 'Exited' if is_fill else 'Exiting'
         if is_sub_profit and is_sub_trade:
             if self._rpc._fiat_converter:
                 cp_fiat = self._rpc._fiat_converter.convert_amount(
                     msg['cumulative_profit'], msg['stake_currency'], msg['fiat_currency'])
                 cp_extra = f" / {cp_fiat:.3f} {msg['fiat_currency']}"
-            else:
-                cp_extra = ''
-            cp_extra = f"*Cumulative Profit:* (`{msg['cumulative_profit']:.8f} " \
-                       f"{msg['stake_currency']}{cp_extra}`)\n"
+            exit_wording = f"Partially {exit_wording.lower()}"
+            cp_extra = (
+                f"*Cumulative Profit:* (`{msg['cumulative_profit']:.8f} "
+                f"{msg['stake_currency']}{cp_extra}`)\n"
+            )
+
         message = (
             f"{msg['emoji']} *{self._exchange_from_msg(msg)}:* "
-            f"{'Exited' if is_fill else 'Exiting'} {msg['pair']} (#{msg['trade_id']})\n"
+            f"{exit_wording} {msg['pair']} (#{msg['trade_id']})\n"
             f"{self._add_analyzed_candle(msg['pair'])}"
             f"*{f'{profit_prefix}Profit' if is_fill else f'Unrealized {profit_prefix}Profit'}:* "
             f"`{msg['profit_ratio']:.2%}{msg['profit_extra']}`\n"
@@ -362,7 +366,7 @@ class Telegram(RPCHandler):
 
         elif msg['type'] == RPCMessageType.EXIT_FILL:
             message += f"*Exit Rate:* `{msg['close_rate']:.8f}`"
-        if msg.get('sub_trade'):
+        if is_sub_trade:
             if self._rpc._fiat_converter:
                 msg['stake_amount_fiat'] = self._rpc._fiat_converter.convert_amount(
                     msg['stake_amount'], msg['stake_currency'], msg['fiat_currency'])
@@ -410,6 +414,9 @@ class Telegram(RPCHandler):
 
         elif msg_type == RPCMessageType.WARNING:
             message = f"\N{WARNING SIGN} *Warning:* `{msg['status']}`"
+        elif msg_type == RPCMessageType.EXCEPTION:
+            # Errors will contain exceptions, which are wrapped in tripple ticks.
+            message = f"\N{WARNING SIGN} *ERROR:* \n {msg['status']}"
 
         elif msg_type == RPCMessageType.STARTUP:
             message = f"{msg['status']}"
@@ -484,7 +491,9 @@ class Telegram(RPCHandler):
             if order_nr == 1:
                 lines.append(f"*{wording} #{order_nr}:*")
                 lines.append(
-                    f"*Amount:* {cur_entry_amount} ({order['cost']:.8f} {quote_currency})")
+                    f"*Amount:* {cur_entry_amount} "
+                    f"({round_coin_value(order['cost'], quote_currency)})"
+                )
                 lines.append(f"*Average Price:* {cur_entry_average}")
             else:
                 sum_stake = 0
@@ -504,14 +513,14 @@ class Telegram(RPCHandler):
                 if prev_avg_price:
                     minus_on_entry = (cur_entry_average - prev_avg_price) / prev_avg_price
 
-                lines.append(f"*{wording} #{order_nr}:* at {minus_on_entry:.2%} avg profit")
+                lines.append(f"*{wording} #{order_nr}:* at {minus_on_entry:.2%} avg Profit")
                 if is_open:
                     lines.append("({})".format(cur_entry_datetime
                                                .humanize(granularity=["day", "hour", "minute"])))
                 lines.append(f"*Amount:* {cur_entry_amount} "
                              f"({round_coin_value(order['cost'], quote_currency)})")
                 lines.append(f"*Average {wording} Price:* {cur_entry_average} "
-                             f"({price_to_1st_entry:.2%} from 1st entry rate)")
+                             f"({price_to_1st_entry:.2%} from 1st entry Rate)")
                 lines.append(f"*Order filled:* {order['order_filled_date']}")
 
                 # TODO: is this really useful?
@@ -559,37 +568,54 @@ class Telegram(RPCHandler):
         for r in results:
             r['open_date_hum'] = arrow.get(r['open_date']).humanize()
             r['num_entries'] = len([o for o in r['orders'] if o['ft_is_entry']])
+            r['num_exits'] = len([o for o in r['orders'] if not o['ft_is_entry']
+                                 and not o['ft_order_side'] == 'stoploss'])
             r['exit_reason'] = r.get('exit_reason', "")
-            r['rounded_stake_amount'] = round_coin_value(r['stake_amount'], r['quote_currency'])
-            r['rounded_profit_abs'] = round_coin_value(r['profit_abs'], r['quote_currency'])
+            r['stake_amount_r'] = round_coin_value(r['stake_amount'], r['quote_currency'])
+            r['max_stake_amount_r'] = round_coin_value(
+                r['max_stake_amount'] or r['stake_amount'], r['quote_currency'])
+            r['profit_abs_r'] = round_coin_value(r['profit_abs'], r['quote_currency'])
+            r['realized_profit_r'] = round_coin_value(r['realized_profit'], r['quote_currency'])
+            r['total_profit_abs_r'] = round_coin_value(
+                r['total_profit_abs'], r['quote_currency'])
             lines = [
                 "*Trade ID:* `{trade_id}`" +
                 (" `(since {open_date_hum})`" if r['is_open'] else ""),
                 "*Current Pair:* {pair}",
-                "*Direction:* " + ("`Short`" if r.get('is_short') else "`Long`"),
-                "*Leverage:* `{leverage}`" if r.get('leverage') else "",
-                "*Amount:* `{amount} ({rounded_stake_amount})`",
+                f"*Direction:* {'`Short`' if r.get('is_short') else '`Long`'}"
+                + " ` ({leverage}x)`" if r.get('leverage') else "",
+                "*Amount:* `{amount} ({stake_amount_r})`",
+                "*Total invested:* `{max_stake_amount_r}`" if position_adjust else "",
                 "*Enter Tag:* `{enter_tag}`" if r['enter_tag'] else "",
                 "*Exit Reason:* `{exit_reason}`" if r['exit_reason'] else "",
             ]
 
             if position_adjust:
                 max_buy_str = (f"/{max_entries + 1}" if (max_entries > 0) else "")
-                lines.append("*Number of Entries:* `{num_entries}`" + max_buy_str)
+                lines.extend([
+                    "*Number of Entries:* `{num_entries}" + max_buy_str + "`",
+                    "*Number of Exits:* `{num_exits}`"
+                ])
 
             lines.extend([
                 "*Open Rate:* `{open_rate:.8f}`",
                 "*Close Rate:* `{close_rate:.8f}`" if r['close_rate'] else "",
                 "*Open Date:* `{open_date}`",
                 "*Close Date:* `{close_date}`" if r['close_date'] else "",
-                "*Current Rate:* `{current_rate:.8f}`" if r['is_open'] else "",
-                ("*Current Profit:* " if r['is_open'] else "*Close Profit: *")
-                + "`{profit_ratio:.2%}` `({rounded_profit_abs})`",
+                " \n*Current Rate:* `{current_rate:.8f}`" if r['is_open'] else "",
+                ("*Unrealized Profit:* " if r['is_open'] else "*Close Profit: *")
+                + "`{profit_ratio:.2%}` `({profit_abs_r})`",
             ])
 
             if r['is_open']:
                 if r.get('realized_profit'):
-                    lines.append("*Realized Profit:* `{realized_profit:.8f}`")
+                    lines.extend([
+                        "*Realized Profit:* `{realized_profit_ratio:.2%} ({realized_profit_r})`",
+                        "*Total Profit:* `{total_profit_ratio:.2%} ({total_profit_abs_r})`"
+                    ])
+
+                # Append empty line to improve readability
+                lines.append(" ")
                 if (r['stop_loss_abs'] != r['initial_stop_loss_abs']
                         and r['initial_stop_loss_ratio'] is not None):
                     # Adding initial stoploss only if it is different from stoploss
@@ -1048,10 +1074,14 @@ class Telegram(RPCHandler):
                     query.answer()
                     query.edit_message_text(text="Force exit canceled.")
                     return
-                trade: Trade = Trade.get_trades(trade_filter=Trade.id == trade_id).first()
+                trade: Optional[Trade] = Trade.get_trades(trade_filter=Trade.id == trade_id).first()
                 query.answer()
-                query.edit_message_text(text=f"Manually exiting Trade #{trade_id}, {trade.pair}")
-                self._force_exit_action(trade_id)
+                if trade:
+                    query.edit_message_text(
+                        text=f"Manually exiting Trade #{trade_id}, {trade.pair}")
+                    self._force_exit_action(trade_id)
+                else:
+                    query.edit_message_text(text=f"Trade {trade_id} not found.")
 
     def _force_enter_action(self, pair, price: Optional[float], order_side: SignalDirection):
         if pair != 'cancel':
@@ -1502,6 +1532,9 @@ class Telegram(RPCHandler):
             "*/count:* `Show number of active trades compared to allowed number of trades`\n"
             "*/edge:* `Shows validated pairs by Edge if it is enabled` \n"
             "*/health* `Show latest process timestamp - defaults to 1970-01-01 00:00:00` \n"
+            "*/marketdir [long | short | even | none]:* `Updates the user managed variable "
+            "that represents the current market direction. If no direction is provided `"
+            "`the currently set market direction will be output.` \n"
 
             "_Statistics_\n"
             "------------\n"
@@ -1535,7 +1568,7 @@ class Telegram(RPCHandler):
         Handler for /health
         Shows the last process timestamp
         """
-        health = self._rpc._health()
+        health = self._rpc.health()
         message = f"Last process: `{health['last_process_loc']}`"
         self._send_msg(message)
 
@@ -1685,3 +1718,39 @@ class Telegram(RPCHandler):
                 'TelegramError: %s! Giving up on that message.',
                 telegram_err.message
             )
+
+    @authorized_only
+    def _changemarketdir(self, update: Update, context: CallbackContext) -> None:
+        """
+        Handler for /marketdir.
+        Updates the bot's market_direction
+        :param bot: telegram bot
+        :param update: message update
+        :return: None
+        """
+        if context.args and len(context.args) == 1:
+            new_market_dir_arg = context.args[0]
+            old_market_dir = self._rpc._get_market_direction()
+            new_market_dir = None
+            if new_market_dir_arg == "long":
+                new_market_dir = MarketDirection.LONG
+            elif new_market_dir_arg == "short":
+                new_market_dir = MarketDirection.SHORT
+            elif new_market_dir_arg == "even":
+                new_market_dir = MarketDirection.EVEN
+            elif new_market_dir_arg == "none":
+                new_market_dir = MarketDirection.NONE
+
+            if new_market_dir is not None:
+                self._rpc._update_market_direction(new_market_dir)
+                self._send_msg("Successfully updated market direction"
+                               f" from *{old_market_dir}* to *{new_market_dir}*.")
+            else:
+                raise RPCException("Invalid market direction provided. \n"
+                                   "Valid market directions: *long, short, even, none*")
+        elif context.args is not None and len(context.args) == 0:
+            old_market_dir = self._rpc._get_market_direction()
+            self._send_msg(f"Currently set market direction: *{old_market_dir}*")
+        else:
+            raise RPCException("Invalid usage of command /marketdir. \n"
+                               "Usage: */marketdir [short |  long | even | none]*")
