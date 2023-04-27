@@ -420,7 +420,7 @@ class FreqtradeBot(LoggingMixin):
         """
         Try refinding a lost trade.
         Only used when InsufficientFunds appears on exit orders (stoploss or long sell/short buy).
-        Tries to walk the stored orders and sell them off eventually.
+        Tries to walk the stored orders and updates the trade state if necessary.
         """
         logger.info(f"Trying to refind lost order for {trade}")
         for order in trade.orders:
@@ -490,7 +490,8 @@ class FreqtradeBot(LoggingMixin):
         # Create entity and execute trade for each pair from whitelist
         for pair in whitelist:
             try:
-                trades_created += self.create_trade(pair)
+                with self._exit_lock:
+                    trades_created += self.create_trade(pair)
             except DependencyException as exception:
                 logger.warning('Unable to create trade for %s: %s', pair, exception)
 
