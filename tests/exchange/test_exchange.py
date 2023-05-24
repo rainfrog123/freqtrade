@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from random import randint
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
-import arrow
 import ccxt
 import pytest
 from ccxt import DECIMAL_PLACES, ROUND, ROUND_UP, TICK_SIZE, TRUNCATE
@@ -20,9 +19,10 @@ from freqtrade.exchange import (Binance, Bittrex, Exchange, Kraken, amount_to_pr
                                 timeframe_to_minutes, timeframe_to_msecs, timeframe_to_next_date,
                                 timeframe_to_prev_date, timeframe_to_seconds)
 from freqtrade.exchange.common import (API_FETCH_ORDER_RETRY_COUNT, API_RETRY_COUNT,
-                                       calculate_backoff, remove_credentials)
+                                       calculate_backoff, remove_exchange_credentials)
 from freqtrade.exchange.exchange import amount_to_contract_precision
 from freqtrade.resolvers.exchange_resolver import ExchangeResolver
+from freqtrade.util import dt_now, dt_ts
 from tests.conftest import (EXMS, generate_test_data_raw, get_mock_coro, get_patched_exchange,
                             log_has, log_has_re, num_log_has_re)
 
@@ -137,16 +137,14 @@ def test_init(default_conf, mocker, caplog):
     assert log_has('Instance is running with dry_run enabled', caplog)
 
 
-def test_remove_credentials(default_conf, caplog) -> None:
+def test_remove_exchange_credentials(default_conf) -> None:
     conf = deepcopy(default_conf)
-    conf['dry_run'] = False
-    remove_credentials(conf)
+    remove_exchange_credentials(conf['exchange'], False)
 
     assert conf['exchange']['key'] != ''
     assert conf['exchange']['secret'] != ''
 
-    conf['dry_run'] = True
-    remove_credentials(conf)
+    remove_exchange_credentials(conf['exchange'], True)
     assert conf['exchange']['key'] == ''
     assert conf['exchange']['secret'] == ''
     assert conf['exchange']['password'] == ''
@@ -646,7 +644,7 @@ def test_reload_markets(default_conf, mocker, caplog):
     exchange = get_patched_exchange(mocker, default_conf, api_mock, id="binance",
                                     mock_markets=False)
     exchange._load_async_markets = MagicMock()
-    exchange._last_markets_refresh = arrow.utcnow().int_timestamp
+    exchange._last_markets_refresh = dt_ts()
 
     assert exchange.markets == initial_markets
 
@@ -657,7 +655,7 @@ def test_reload_markets(default_conf, mocker, caplog):
 
     api_mock.load_markets = MagicMock(return_value=updated_markets)
     # more than 10 minutes have passed, reload is executed
-    exchange._last_markets_refresh = arrow.utcnow().int_timestamp - 15 * 60
+    exchange._last_markets_refresh = dt_ts(dt_now() - timedelta(minutes=15))
     exchange.reload_markets()
     assert exchange.markets == updated_markets
     assert exchange._load_async_markets.call_count == 1
@@ -2078,7 +2076,7 @@ def test_get_historic_ohlcv(default_conf, mocker, caplog, exchange_name, candle_
     exchange = get_patched_exchange(mocker, default_conf, id=exchange_name)
     ohlcv = [
         [
-            arrow.utcnow().int_timestamp * 1000,  # unix timestamp ms
+            dt_ts(),  # unix timestamp ms
             1,  # open
             2,  # high
             3,  # low
@@ -2098,7 +2096,7 @@ def test_get_historic_ohlcv(default_conf, mocker, caplog, exchange_name, candle_
     ret = exchange.get_historic_ohlcv(
         pair,
         "5m",
-        int((arrow.utcnow().int_timestamp - since) * 1000),
+        dt_ts(dt_now() - timedelta(seconds=since)),
         candle_type=candle_type
     )
 
@@ -2116,7 +2114,7 @@ def test_get_historic_ohlcv(default_conf, mocker, caplog, exchange_name, candle_
     ret = exchange.get_historic_ohlcv(
         pair,
         "5m",
-        int((arrow.utcnow().int_timestamp - since) * 1000),
+        dt_ts(dt_now() - timedelta(seconds=since)),
         candle_type=candle_type
     )
     assert log_has_re(r"Async code raised an exception: .*", caplog)
@@ -2168,7 +2166,7 @@ async def test__async_get_historic_ohlcv(default_conf, mocker, caplog, exchange_
 def test_refresh_latest_ohlcv(mocker, default_conf, caplog, candle_type) -> None:
     ohlcv = [
         [
-            (arrow.utcnow().shift(minutes=-5).int_timestamp) * 1000,  # unix timestamp ms
+            dt_ts(dt_now() - timedelta(minutes=5)),  # unix timestamp ms
             1,  # open
             2,  # high
             3,  # low
@@ -2176,7 +2174,7 @@ def test_refresh_latest_ohlcv(mocker, default_conf, caplog, candle_type) -> None
             5,  # volume (in quote currency)
         ],
         [
-            arrow.utcnow().int_timestamp * 1000,  # unix timestamp ms
+            dt_ts(),  # unix timestamp ms
             3,  # open
             1,  # high
             4,  # low
@@ -2366,7 +2364,7 @@ def test_refresh_latest_ohlcv_cache(mocker, default_conf, candle_type, time_mach
 async def test__async_get_candle_history(default_conf, mocker, caplog, exchange_name):
     ohlcv = [
         [
-            arrow.utcnow().int_timestamp * 1000,  # unix timestamp ms
+            dt_ts(),  # unix timestamp ms
             1,  # open
             2,  # high
             3,  # low
@@ -2403,7 +2401,7 @@ async def test__async_get_candle_history(default_conf, mocker, caplog, exchange_
         api_mock.fetch_ohlcv = MagicMock(side_effect=ccxt.BaseError("Unknown error"))
         exchange = get_patched_exchange(mocker, default_conf, api_mock, id=exchange_name)
         await exchange._async_get_candle_history(pair, "5m", CandleType.SPOT,
-                                                 (arrow.utcnow().int_timestamp - 2000) * 1000)
+                                                 dt_ts(dt_now() - timedelta(seconds=2000)))
 
     exchange.close()
 
@@ -2412,7 +2410,7 @@ async def test__async_get_candle_history(default_conf, mocker, caplog, exchange_
         api_mock.fetch_ohlcv = MagicMock(side_effect=ccxt.NotSupported("Not supported"))
         exchange = get_patched_exchange(mocker, default_conf, api_mock, id=exchange_name)
         await exchange._async_get_candle_history(pair, "5m", CandleType.SPOT,
-                                                 (arrow.utcnow().int_timestamp - 2000) * 1000)
+                                                 dt_ts(dt_now() - timedelta(seconds=2000)))
     exchange.close()
 
 
@@ -2435,7 +2433,7 @@ async def test__async_kucoin_get_candle_history(default_conf, mocker, caplog):
         with pytest.raises(DDosProtection, match=r'429 Too Many Requests'):
             await exchange._async_get_candle_history(
                 "ETH/BTC", "5m", CandleType.SPOT,
-                since_ms=(arrow.utcnow().int_timestamp - 2000) * 1000, count=3)
+                since_ms=dt_ts(dt_now() - timedelta(seconds=2000)), count=3)
     assert num_log_has_re(msg, caplog) == 3
 
     caplog.clear()
@@ -2452,7 +2450,7 @@ async def test__async_kucoin_get_candle_history(default_conf, mocker, caplog):
             with pytest.raises(DDosProtection, match=r'429 Too Many Requests'):
                 await exchange._async_get_candle_history(
                     "ETH/BTC", "5m", CandleType.SPOT,
-                    (arrow.utcnow().int_timestamp - 2000) * 1000, count=3)
+                    dt_ts(dt_now() - timedelta(seconds=2000)), count=3)
         # Expect the "returned exception" message 12 times (4 retries * 3 (loop))
         assert num_log_has_re(msg, caplog) == 12
         assert num_log_has_re(msg2, caplog) == 9
@@ -2910,14 +2908,14 @@ async def test__async_fetch_trades(default_conf, mocker, caplog, exchange_name,
     with pytest.raises(OperationalException, match=r'Could not fetch trade data*'):
         api_mock.fetch_trades = MagicMock(side_effect=ccxt.BaseError("Unknown error"))
         exchange = get_patched_exchange(mocker, default_conf, api_mock, id=exchange_name)
-        await exchange._async_fetch_trades(pair, since=(arrow.utcnow().int_timestamp - 2000) * 1000)
+        await exchange._async_fetch_trades(pair, since=dt_ts(dt_now() - timedelta(seconds=2000)))
     exchange.close()
 
     with pytest.raises(OperationalException, match=r'Exchange.* does not support fetching '
                                                    r'historical trade data\..*'):
         api_mock.fetch_trades = MagicMock(side_effect=ccxt.NotSupported("Not supported"))
         exchange = get_patched_exchange(mocker, default_conf, api_mock, id=exchange_name)
-        await exchange._async_fetch_trades(pair, since=(arrow.utcnow().int_timestamp - 2000) * 1000)
+        await exchange._async_fetch_trades(pair, since=dt_ts(dt_now() - timedelta(seconds=2000)))
     exchange.close()
 
 
