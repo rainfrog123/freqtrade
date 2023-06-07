@@ -1075,7 +1075,7 @@ class FreqtradeBot(LoggingMixin):
         trades_closed = 0
         for trade in trades:
 
-            if not self.wallets.check_exit_amount(trade):
+            if trade.open_order_id is None and not self.wallets.check_exit_amount(trade):
                 logger.warning(
                     f'Not enough {trade.safe_base_currency} in wallet to exit {trade}. '
                     'Trying to recover.')
@@ -1302,6 +1302,10 @@ class FreqtradeBot(LoggingMixin):
                             f"(orderid:{order['id']}) in order to add another one ...")
 
                 self.cancel_stoploss_on_exchange(trade)
+                if not trade.is_open:
+                    logger.warning(
+                        f"Trade {trade} is closed, not creating trailing stoploss order.")
+                    return
 
                 # Create new stoploss order
                 if not self.create_stoploss_order(trade=trade, stop_price=stoploss_norm):
