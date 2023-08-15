@@ -568,8 +568,7 @@ class Backtesting:
             pos_trade = self._get_exit_for_signal(trade, row, exit_, amount)
             if pos_trade is not None:
                 order = pos_trade.orders[-1]
-                if self._get_order_filled(order.ft_price, row):
-                    order.close_bt_order(current_date, trade)
+                if self._try_close_open_order(order, trade, current_date, row):
                     trade.recalc_trade_from_orders()
                 self.wallets.update()
                 return pos_trade
@@ -579,6 +578,19 @@ class Backtesting:
     def _get_order_filled(self, rate: float, row: Tuple) -> bool:
         """ Rate is within candle, therefore filled"""
         return row[LOW_IDX] <= rate <= row[HIGH_IDX]
+
+    def _try_close_open_order(
+            self, order: Optional[Order], trade: LocalTrade, current_date: datetime,
+            row: Tuple) -> bool:
+        """
+        Check if an order is open and if it should've filled.
+        :return:  True if the order filled.
+        """
+        if order and self._get_order_filled(order.ft_price, row):
+            order.close_bt_order(current_date, trade)
+            trade.open_order_id = None
+            return True
+        return False
 
     def _get_exit_for_signal(
             self, trade: LocalTrade, row: Tuple, exit_: ExitCheckTuple,
@@ -904,9 +916,7 @@ class Backtesting:
             )
             order._trade_bt = trade
             trade.orders.append(order)
-            if pos_adjust and self._get_order_filled(order.ft_price, row):
-                order.close_bt_order(current_time, trade)
-            else:
+            if not self._try_close_open_order(order, trade, current_time, row):
                 trade.open_order_id = str(self.order_id_counter)
             trade.recalc_trade_from_orders()
 
@@ -1122,23 +1132,18 @@ class Backtesting:
         for trade in list(LocalTrade.bt_trades_open_pp[pair]):
             # 3. Process entry orders.
             order = trade.select_order(trade.entry_side, is_open=True)
-            if order and self._get_order_filled(order.ft_price, row):
-                order.close_bt_order(current_time, trade)
-                trade.open_order_id = None
+            if self._try_close_open_order(order, trade, current_time, row):
                 self.wallets.update()
 
-                # 4. Create exit orders (if any)
+            # 4. Create exit orders (if any)
             if not trade.open_order_id:
                 self._check_trade_exit(trade, row)  # Place exit order if necessary
 
-                # 5. Process exit orders.
+            # 5. Process exit orders.
             order = trade.select_order(trade.exit_side, is_open=True)
-            if order and self._get_order_filled(order.ft_price, row):
-                order.close_bt_order(current_time, trade)
-                trade.open_order_id = None
+            if order and self._try_close_open_order(order, trade, current_time, row):
                 sub_trade = order.safe_amount_after_fee != trade.amount
                 if sub_trade:
-                    order.close_bt_order(current_time, trade)
                     trade.recalc_trade_from_orders()
                 else:
                     trade.close_date = current_time
