@@ -1390,7 +1390,7 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
-            df = pd.DataFrame()
+            df = DataFrame()
             strat_name = self.config['strategy']
             # features = []
             # for i in range(5):
@@ -1408,10 +1408,10 @@ class Backtesting:
             df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
             df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
-            import os 
+            import os
             path = os.path.join('/allah/freqtrade/json_dict', f'{datetime.now()}_{strat_name}.json')
             df.to_json(path)
-            
+
             # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
             # df = df[features]
             # df = df[features], 'is_short', ''profit_ratio']
@@ -1421,3 +1421,4 @@ class Backtesting:
             #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
             # import pandas as pd
             # a = pd.read_json('2022-09-23 00:41:02.932137.json')
+
