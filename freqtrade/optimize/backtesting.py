@@ -1438,4 +1438,4 @@ class Backtesting:
             #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
             # import pandas as pd
             # a = pd.read_json('2022-09-23 00:41:02.932137.json')
-
+            print('done')
