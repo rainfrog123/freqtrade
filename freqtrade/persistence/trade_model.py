@@ -240,7 +240,10 @@ class Order(ModelBase):
         if (self.ft_order_side == trade.entry_side and self.price):
             trade.open_rate = self.price
             trade.recalc_trade_from_orders()
-            trade.adjust_stop_loss(trade.open_rate, trade.stop_loss_pct, refresh=True)
+            if trade.nr_of_successful_entries == 1:
+                trade.initial_stop_loss_pct = None
+                trade.is_stop_loss_trailing = False
+            trade.adjust_stop_loss(trade.open_rate, trade.stop_loss_pct)
 
     @staticmethod
     def update_orders(orders: List['Order'], order: Dict[str, Any]):
@@ -349,6 +352,7 @@ class LocalTrade:
     initial_stop_loss: Optional[float] = 0.0
     # percentage value of the initial stop loss
     initial_stop_loss_pct: Optional[float] = None
+    is_stop_loss_trailing: bool = False
     # stoploss order id which is on exchange
     stoploss_order_id: Optional[str] = None
     # last update time of the stoploss order on exchange
@@ -614,27 +618,25 @@ class LocalTrade:
         """
         Method used internally to set self.stop_loss.
         """
-        stop_loss_norm = price_to_precision(stop_loss, self.price_precision, self.precision_mode,
-                                            rounding_mode=ROUND_DOWN if self.is_short else ROUND_UP)
         if not self.stop_loss:
-            self.initial_stop_loss = stop_loss_norm
-        self.stop_loss = stop_loss_norm
+            self.initial_stop_loss = stop_loss
+        self.stop_loss = stop_loss
 
         self.stop_loss_pct = -1 * abs(percent)
 
     def adjust_stop_loss(self, current_price: float, stoploss: Optional[float],
-                         initial: bool = False, refresh: bool = False) -> None:
+                         initial: bool = False, allow_refresh: bool = False) -> None:
         """
         This adjusts the stop loss to it's most recently observed setting
         :param current_price: Current rate the asset is traded
         :param stoploss: Stoploss as factor (sample -0.05 -> -5% below current price).
         :param initial: Called to initiate stop_loss.
             Skips everything if self.stop_loss is already set.
+        :param refresh: Called to refresh stop_loss, allows adjustment in both directions
         """
         if stoploss is None or (initial and not (self.stop_loss is None or self.stop_loss == 0)):
             # Don't modify if called with initial and nothing to do
             return
-        refresh = True if refresh and self.nr_of_successful_entries == 1 else False
 
         leverage = self.leverage or 1.0
         if self.is_short:
@@ -642,26 +644,33 @@ class LocalTrade:
         else:
             new_loss = float(current_price * (1 - abs(stoploss / leverage)))
 
+        stop_loss_norm = price_to_precision(new_loss, self.price_precision, self.precision_mode,
+                                            rounding_mode=ROUND_DOWN if self.is_short else ROUND_UP)
         # no stop loss assigned yet
-        if self.initial_stop_loss_pct is None or refresh:
-            self.__set_stop_loss(new_loss, stoploss)
+        if self.initial_stop_loss_pct is None:
+            self.__set_stop_loss(stop_loss_norm, stoploss)
             self.initial_stop_loss = price_to_precision(
-                new_loss, self.price_precision, self.precision_mode,
+                stop_loss_norm, self.price_precision, self.precision_mode,
                 rounding_mode=ROUND_DOWN if self.is_short else ROUND_UP)
             self.initial_stop_loss_pct = -1 * abs(stoploss)
 
         # evaluate if the stop loss needs to be updated
         else:
-
-            higher_stop = new_loss > self.stop_loss
-            lower_stop = new_loss < self.stop_loss
+            higher_stop = stop_loss_norm > self.stop_loss
+            lower_stop = stop_loss_norm < self.stop_loss
 
             # stop losses only walk up, never down!,
             #   ? But adding more to a leveraged trade would create a lower liquidation price,
             #   ? decreasing the minimum stoploss
-            if (higher_stop and not self.is_short) or (lower_stop and self.is_short):
+            if (
+                allow_refresh
+                or (higher_stop and not self.is_short)
+                or (lower_stop and self.is_short)
+            ):
                 logger.debug(f"{self.pair} - Adjusting stoploss...")
-                self.__set_stop_loss(new_loss, stoploss)
+                if not allow_refresh:
+                    self.is_stop_loss_trailing = True
+                self.__set_stop_loss(stop_loss_norm, stoploss)
             else:
                 logger.debug(f"{self.pair} - Keeping current stoploss...")
 
@@ -746,10 +755,8 @@ class LocalTrade:
         self.open_order_id = None
         self.recalc_trade_from_orders(is_closing=True)
         if show_msg:
-            logger.info(
-                'Marking %s as closed as the trade is fulfilled and found no open orders for it.',
-                self
-            )
+            logger.info(f"Marking {self} as closed as the trade is fulfilled "
+                        "and found no open orders for it.")
 
     def update_fee(self, fee_cost: float, fee_currency: Optional[str], fee_rate: Optional[float],
                    side: str) -> None:
@@ -917,15 +924,14 @@ class LocalTrade:
 
         short_close_zero = (self.is_short and close_trade_value == 0.0)
         long_close_zero = (not self.is_short and open_trade_value == 0.0)
-        leverage = self.leverage or 1.0
 
         if (short_close_zero or long_close_zero):
             return 0.0
         else:
             if self.is_short:
-                profit_ratio = (1 - (close_trade_value / open_trade_value)) * leverage
+                profit_ratio = (1 - (close_trade_value / open_trade_value)) * self.leverage
             else:
-                profit_ratio = ((close_trade_value / open_trade_value) - 1) * leverage
+                profit_ratio = ((close_trade_value / open_trade_value) - 1) * self.leverage
 
         return float(f"{profit_ratio:.8f}")
 
@@ -1035,7 +1041,8 @@ class LocalTrade:
 
     def select_filled_orders(self, order_side: Optional[str] = None) -> List['Order']:
         """
-        Finds filled orders for this orderside.
+        Finds filled orders for this order side.
+        Will not return open orders which already partially filled.
         :param order_side: Side of the order (either 'buy', 'sell', or None)
         :return: array of Order objects
         """
@@ -1187,21 +1194,22 @@ class LocalTrade:
             return LocalTrade.bt_open_open_trade_count
 
     @staticmethod
-    def stoploss_reinitialization(desired_stoploss):
+    def stoploss_reinitialization(desired_stoploss: float):
         """
         Adjust initial Stoploss to desired stoploss for all open trades.
         """
+        trade: Trade
         for trade in Trade.get_open_trades():
-            logger.info("Found open trade: %s", trade)
+            logger.info(f"Found open trade: {trade}")
 
             # skip case if trailing-stop changed the stoploss already.
-            if (trade.stop_loss == trade.initial_stop_loss
+            if (not trade.is_stop_loss_trailing
                     and trade.initial_stop_loss_pct != desired_stoploss):
                 # Stoploss value got changed
 
                 logger.info(f"Stoploss for {trade} needs adjustment...")
                 # Force reset of stoploss
-                trade.stop_loss = None
+                trade.stop_loss = 0.0
                 trade.initial_stop_loss_pct = None
                 trade.adjust_stop_loss(trade.open_rate, desired_stoploss)
                 logger.info(f"New stoploss: {trade.stop_loss}.")
@@ -1268,6 +1276,8 @@ class Trade(ModelBase, LocalTrade):
     # percentage value of the initial stop loss
     initial_stop_loss_pct: Mapped[Optional[float]] = mapped_column(
         Float(), nullable=True)  # type: ignore
+    is_stop_loss_trailing: Mapped[bool] = mapped_column(
+        nullable=False, default=False)  # type: ignore
     # stoploss order id which is on exchange
     stoploss_order_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, index=True)  # type: ignore
