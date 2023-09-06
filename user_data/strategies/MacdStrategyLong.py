@@ -43,6 +43,7 @@ class MacdStrategyLong(IStrategy):
         crossed_below = qtpylib.crossed_below(dataframe['macd'], dataframe['macdsignal'])
         dataframe.loc[crossed_below, 'enter_long'] = 1
 
+
         return dataframe
 
     def populate_exit_trend(self, dataframe, metadata):

@@ -1289,9 +1289,7 @@ class Backtesting:
             self.config.update({'max_open_trades': self.strategy.max_open_trades})
 
         # need to reprocess data every time to populate signals
-        global training_data
         preprocessed = self.strategy.advise_all_indicators(data)
-        training_data = preprocessed.copy()
         # Trim startup period from analyzed dataframe
         # This only used to determine if trimming would result in an empty dataframe
         preprocessed_tmp = trim_dataframes(preprocessed, timerange, self.required_startup)
@@ -1407,36 +1405,54 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
-            df = DataFrame()
-            strat_name = self.config['strategy']
-            # features = []
-            # for i in range(5):
-            #     features.append(f'rsi_-{i}')
-            df = training_data['ETH/USDT:USDT']
-            for trade in results['strategy'][strat_name]['trades']:
-                df.loc[df['date'] == trade['open_date'], 'trade'] = 1
-                df.loc[df['date'] == trade['open_date'], 'is_short'] = trade['is_short']
-                df.loc[df['date'] == trade['open_date'], 'profit_ratio'] = trade['profit_ratio']
-                # df = df.append(df.loc[df['date'] == trade['open_date']].squeeze(), ignore_index=True)
-                # df = pd.concat([df,df.loc[df['date'] == trade['open_date']]],axis = 0)
-                # df.loc[df.index[-1], 'is_short'] = trade['is_short']
-                # df.loc[df.index[-1], 'profit_ratio'] = trade['profit_ratio']
-            df.loc[(df['is_short'] == True) & (df['profit_ratio'] > 0.0), 'label'] = 'true_short'
-            df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
-            df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
-            df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
-            import os
-            path = os.path.join('/allah/freqtrade/json_dict', f'{datetime.now()}_{strat_name}.json')
-            df.to_json(path)
+            import os, json
+            class TradeDataProcessor:
 
-            # features.extend(['is_short', 'profit_ratio', 'date', 'label'])
-            # df = df[features]
-            # df = df[features], 'is_short', ''profit_ratio']
-            # trade['is_short'] trade['profit_ratio']
-            # features
-            # df = df[]
-            #     # print(results['strategy']['test']['trades'][trade]['is_short'],end='\t' + str(trade) + '\n')
-            # import pandas as pd
-            # a = pd.read_json('2022-09-23 00:41:02.932137.json')
-            print('done')
+                def __init__(self, config, results, training_data):
+                    self.config = config
+                    self.results = results
+                    self.training_data = training_data
+
+                def process_and_export(self):
+                    strat_name = self.config['strategy']
+
+                    # Create a DataFrame from training data (assuming it contains the 'ETH/USDT:USDT' key)
+                    df = self.training_data.get('ETH/USDT:USDT')
+
+                    if df is None:
+                        print("Training data for 'ETH/USDT:USDT' not found.")
+                        return
+
+                    # Loop through trade data and update DataFrame
+                    for trade in self.results['strategy'].get(strat_name, {}).get('trades', []):
+                        trade_date = trade.get('open_date')
+                        if trade_date:
+                            mask = df['date'] == trade_date
+                            df.loc[mask, 'trade'] = 1
+                            df.loc[mask, 'is_short'] = trade.get('is_short')
+                            df.loc[mask, 'profit_ratio'] = trade.get('profit_ratio')
+
+                    # Label trades based on conditions
+                    df['label'] = ''
+                    df.loc[(df['is_short'] == True) & (df['profit_ratio'] > 0.0), 'label'] = 'true_short'
+                    df.loc[(df['is_short'] == True) & (df['profit_ratio'] < 0.0), 'label'] = 'false_short'
+                    df.loc[(df['is_short'] == False) & (df['profit_ratio'] > 0.0), 'label'] = 'true_long'
+                    df.loc[(df['is_short'] == False) & (df['profit_ratio'] < 0.0), 'label'] = 'false_long'
+
+                    # Define the path for the JSON file
+                    # Extract the current date and time
+                    beijing_timezone = timezone(timedelta(hours=8))
+                    current_datetime = datetime.now(beijing_timezone)
+                    # Extract the strategy name
+                    strat_name = self.config['strategy']
+                    # Create a filename based on the strategy name and current date/time
+                    filename_prefix = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+                    json_filename = f'{filename_prefix}_{strat_name}.json'
+                    json_path = os.path.join('/allah/freqtrade/json_dict', json_filename)
+
+                                # Export the DataFrame to a JSON file
+                    df.to_json(json_path)
+                    print('Processing and export done.')
+            processor = TradeDataProcessor(self.config, self.results, self.strategy.advise_all_indicators(data))
+            processor.process_and_export()
 
