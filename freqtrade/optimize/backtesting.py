@@ -1412,7 +1412,7 @@ class Backtesting:
             # features = []
             # for i in range(5):
             #     features.append(f'rsi_-{i}')
-            df = training_data['ETH/USDT']
+            df = training_data['ETH/USDT:USDT']
             for trade in results['strategy'][strat_name]['trades']:
                 df.loc[df['date'] == trade['open_date'], 'trade'] = 1
                 df.loc[df['date'] == trade['open_date'], 'is_short'] = trade['is_short']
@@ -1439,3 +1439,4 @@ class Backtesting:
             # import pandas as pd
             # a = pd.read_json('2022-09-23 00:41:02.932137.json')
             print('done')
+

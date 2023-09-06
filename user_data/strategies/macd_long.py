@@ -21,7 +21,7 @@ class macd_strategy_long(IStrategy):
 
     INTERFACE_VERSION = 3
 
-    timeframe = '1m'
+    timeframe = '3m'
 
     # Can this strategy go shoart?
     can_short: bool = True
@@ -65,13 +65,13 @@ class macd_strategy_long(IStrategy):
                 (qtpylib.crossed_above(dataframe['macd'], dataframe['macdsignal'])
             ),
             'enter_long'] = 1
-        
-        
+
+
         dataframe.loc[
                 (qtpylib.crossed_below(dataframe['macd'], dataframe['macdsignal'])
             ),
             'enter_long'] = 1
-        
+
         # Uncomment to use shorts (Only used in futures/margin mode. Check the documentation for more info)
         # dataframe.loc[
         #     (
@@ -84,4 +84,4 @@ class macd_strategy_long(IStrategy):
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
         return dataframe
-    
+
