@@ -3,6 +3,7 @@ from freqtrade.strategy import IStrategy
 from technical import qtpylib
 import talib.abstract as ta
 
+
 class MacdStrategyShort(IStrategy):
     INTERFACE_VERSION = 3
 
@@ -12,7 +13,7 @@ class MacdStrategyShort(IStrategy):
     minimal_roi = {
         "60": 10000
     }
-    stoploss = -0.004
+    stoploss = -0.002
     trailing_stop = True
     startup_candle_count: int = 30
 
