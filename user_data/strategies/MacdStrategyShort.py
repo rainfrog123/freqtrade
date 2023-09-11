@@ -13,7 +13,7 @@ class MacdStrategyShort(IStrategy):
     minimal_roi = {
         "60": 10000
     }
-    stoploss = -0.002
+    stoploss = -0.004
     trailing_stop = True
     startup_candle_count: int = 30
 
