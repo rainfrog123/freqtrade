@@ -1,0 +1,5 @@
+binance_api==0.1.2
+ccxt==4.0.88
+nest_asyncio==1.5.8
+pandas==2.0.3
+pytz==2023.3.post1
