@@ -66,8 +66,9 @@ async def fetch_and_print_ohlcv(exchange, symbol, df_func):
 
             if current_volume > last_5_volume_sum:
                 print(f"last_5_volume_sum: {last_5_volume_sum}, current_volume: {current_volume}")
-                order = exchange.createOrder(symbol, type='market', side='buy', amount=0.01)  
                 
+                order = exchange.createOrder(symbol, type='market', side='buy', amount=0.01)  
+
             
 
 
