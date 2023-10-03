@@ -1,2 +1,6 @@
-api_key = 'UKNaAkP8V3pFhCG8eVJYvSYvFsVHA2ffjMLKHYUJm7jZ0dIkU6LjQuK7PiYXVwrv'
-api_secret = 'AijN2B8ppGlxHKdFKODj4i9o2cZwL8mtzc09pnJdmRfTThit9oFLYQuPNOtfo04n'
+# api_key = 'UKNaAkP8V3pFhCG8eVJYvSYvFsVHA2ffjMLKHYUJm7jZ0dIkU6LjQuK7PiYXVwrv'
+# api_secret = 'AijN2B8ppGlxHKdFKODj4i9o2cZwL8mtzc09pnJdmRfTThit9oFLYQuPNOtfo04n'
+
+# test api
+api_key = '7f31555ee801f493d8df0beb6916b5c83642738ddcbc8ec92c1a17e82d0c949a'
+api_secret = '7c497666094642f29ac66cc67abe25ea0c80dfe1bd79f6597dcff0358d7c256d'
