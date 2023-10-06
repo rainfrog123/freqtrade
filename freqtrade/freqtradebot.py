@@ -1087,7 +1087,11 @@ class FreqtradeBot(LoggingMixin):
         trades_closed = 0
         for trade in trades:
 
-            if not trade.has_open_orders and not self.wallets.check_exit_amount(trade):
+            if (
+                not trade.has_open_orders
+                and not trade.stoploss_order_id
+                and not self.wallets.check_exit_amount(trade)
+            ):
                 logger.warning(
                     f'Not enough {trade.safe_base_currency} in wallet to exit {trade}. '
                     'Trying to recover.')
@@ -1431,7 +1435,7 @@ class FreqtradeBot(LoggingMixin):
                 trade=trade, order=order_obj, pair=trade.pair,
                 current_time=datetime.now(timezone.utc), proposed_rate=proposed_rate,
                 current_order_rate=order_obj.safe_price, entry_tag=trade.enter_tag,
-                side=trade.entry_side)
+                side=trade.trade_direction)
 
             replacing = True
             cancel_reason = constants.CANCEL_REASON['REPLACE']
