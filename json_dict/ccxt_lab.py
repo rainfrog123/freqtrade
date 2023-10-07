@@ -107,8 +107,8 @@ class Whale:
                 side = 'sell' if position[0]['side'] == 'long' else 'buy'
 
                 entry_price = float(position[0]['info']['entryPrice'])
-                take_profit_price = entry_price * (1.0007 if side == 'sell' else 0.9993)
-                stop_loss_price = entry_price * (0.9993 if side == 'sell' else 1.0007)
+                take_profit_price = entry_price * (1.0006 if side == 'sell' else 0.9994)
+                stop_loss_price = entry_price * (0.9996 if side == 'sell' else 1.0004)
 
                 try:
                     take_profit_order = self.exchange.create_limit_order(
@@ -193,5 +193,5 @@ exchange = ccxt.binance({
 exchange.set_sandbox_mode(True)
 
 # Create an instance of the Whale class
-Whale_1 = Whale(exchange, symbol)
-Whale_1.calculate_trade_quantity()
+whale_1 = Whale(exchange, symbol)
+whale_1.calculate_trade_quantity()
