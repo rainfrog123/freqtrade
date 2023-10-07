@@ -1,18 +1,19 @@
 import ccxt
+from datetime import datetime
 from binance_api import api_key, api_secret
+# Place order: {'info': {'orderId': '1181914767', 'symbol': 'ETHUSDT', 'status': 'FILLED', 'clientOrderId': 'x-xcKtGhcuc97390e896fa0ba7cc9792', 'price': '0.00', 'avgPrice': '1632.91000', 'origQty': '6.002', 'executedQty': '6.002', 'cumQty': '6.002', 'cumQuote': '9800.72582', 'timeInForce': 'GTC', 'type': 'MARKET', 'reduceOnly': False, 'closePosition': False, 'side': 'SELL', 'positionSide': 'BOTH', 'stopPrice': '0.00', 'workingType': 'CONTRACT_PRICE', 'priceProtect': False, 'origType': 'MARKET', 'priceMatch': 'NONE', 'selfTradePreventionMode': 'NONE', 'goodTillDate': '0', 'updateTime': '1696583689637'}, 'id': '1181914767', 'clientOrderId': 'x-xcKtGhcuc97390e896fa0ba7cc9792', 'timestamp': 1696583689637, 'datetime': '2023-10-06T09:14:49.637Z', 'lastTradeTimestamp': 1696583689637, 'lastUpdateTimestamp': 1696583689637, 'symbol': 'ETH/USDT:USDT', 'type': 'market', 'timeInForce': 'GTC', 'postOnly': False, 'reduceOnly': False, 'side': 'sell', 'price': 1632.91, 'triggerPrice': None, 'amount': 6.002, 'cost': 9800.72582, 'average': 1632.91, 'filled': 6.002, 'remaining': 0.0, 'status': 'closed', 'fee': {'currency': None, 'cost': None, 'rate': None}, 'trades': [], 'fees': [{'currency': None, 'cost': None, 'rate': None}], 'stopPrice': None, 'takeProfitPrice': None, 'stopLossPrice': None}
 class Whale:
     def __init__(self, exchange, symbol, leverage=100):
         self.exchange = exchange
         self.symbol = symbol
         self.leverage = leverage
         self.test_mode = True
-
     def get_account_balance(self):
         if self.test_mode:
             return 100
         balance = self.exchange.fetch_balance()
         return balance['total']['USDT']
-
+    
     def get_last_price(self):
         ticker = self.exchange.fetch_ticker(self.symbol)
         return ticker['last']
@@ -30,6 +31,28 @@ class Whale:
         leveraged_balance = min(balance * self.leverage, 100000)
         quantity = leveraged_balance / self.get_last_price()
         return quantity
+
+    def place_trailing_stop_order(self, side):
+        # Side could be 'buy' or 'sell'
+        quantity = self.calculate_trade_quantity()
+        best_bid, best_ask = self.get_best_bid_and_ask()
+        price = best_bid if side == 'buy' else best_ask
+
+        try:
+            order = self.exchange.create_order(
+                self.symbol,
+                'trailing_stop',
+                side,
+                quantity,
+                {
+                    'stopPrice': price,
+                    'reduceOnly': True
+                }
+            )
+        except ccxt.BaseError as e:
+            print(f"An error occurred: {e}")
+
+        return order
 
     def place_first_post_only_order(self, side):
         # Side could be 'buy' or 'sell'
@@ -68,7 +91,7 @@ class Whale:
 
     def is_position_open(self):
         # position = self.exchange.fetch_positions([self.symbol])
-        positions = self.change.fetch_positions([symbol])
+        positions = self.exchange.fetch_positions([symbol])
         current_position_Amt_abs = abs(float(positions[0]['info']['positionAmt']))
         position_exists = (current_position_Amt_abs > 0 or current_position_Amt_abs < 0)
         return position_exists
