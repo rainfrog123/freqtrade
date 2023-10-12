@@ -1,6 +1,6 @@
 import ccxt
 from datetime import datetime
-from binance_api import api_key, api_secret
+from binance_api import testnet_api_key, testnet_api_secret
 # Place order: {'info': {'orderId': '1181914767', 'symbol': 'ETHUSDT', 'status': 'FILLED', 'clientOrderId': 'x-xcKtGhcuc97390e896fa0ba7cc9792', 'price': '0.00', 'avgPrice': '1632.91000', 'origQty': '6.002', 'executedQty': '6.002', 'cumQty': '6.002', 'cumQuote': '9800.72582', 'timeInForce': 'GTC', 'type': 'MARKET', 'reduceOnly': False, 'closePosition': False, 'side': 'SELL', 'positionSide': 'BOTH', 'stopPrice': '0.00', 'workingType': 'CONTRACT_PRICE', 'priceProtect': False, 'origType': 'MARKET', 'priceMatch': 'NONE', 'selfTradePreventionMode': 'NONE', 'goodTillDate': '0', 'updateTime': '1696583689637'}, 'id': '1181914767', 'clientOrderId': 'x-xcKtGhcuc97390e896fa0ba7cc9792', 'timestamp': 1696583689637, 'datetime': '2023-10-06T09:14:49.637Z', 'lastTradeTimestamp': 1696583689637, 'lastUpdateTimestamp': 1696583689637, 'symbol': 'ETH/USDT:USDT', 'type': 'market', 'timeInForce': 'GTC', 'postOnly': False, 'reduceOnly': False, 'side': 'sell', 'price': 1632.91, 'triggerPrice': None, 'amount': 6.002, 'cost': 9800.72582, 'average': 1632.91, 'filled': 6.002, 'remaining': 0.0, 'status': 'closed', 'fee': {'currency': None, 'cost': None, 'rate': None}, 'trades': [], 'fees': [{'currency': None, 'cost': None, 'rate': None}], 'stopPrice': None, 'takeProfitPrice': None, 'stopLossPrice': None}
 class Whale:
     def __init__(self, exchange, symbol, leverage=100):
@@ -186,8 +186,8 @@ exchange = ccxt.binance({
         'defaultType': 'future',
         'newUpdates': True 
     },
-    'apiKey': api_key,
-    'secret': api_secret
+    'apiKey': testnet_api_key,
+    'secret': testnet_api_secret
 })
 # binance = exchange.load_markets()
 exchange.set_sandbox_mode(True)
