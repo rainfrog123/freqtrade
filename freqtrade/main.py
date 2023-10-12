@@ -29,13 +29,26 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     This function will initiate the bot and start the trading loop.
     :return: None
     """
-    print('Welcome to Freqtrade!')
+    try:
+        import os   
+        working_directory = '/allah/freqtrade'
+        os.chdir(working_directory)
+        print('Welcome to Freqtrade! This is the Machine learning branch.')
+        config_trade = ['--version']
+
+        config_backtest = ['backtesting', '-c', 'config.json', '--timerange', '20231004-', '--timeframe', '1m', '--strategy', 'MacdStrategyLong', '--eps', '--starting-balance', '1000000000', '--cache', 'none']
+
+        sysargv = config_backtest
+    except Exception as e:
+        print(e)
+
+
     return_code: Any = 1
     try:
         setup_logging_pre()
         arguments = Arguments(sysargv)
         args = arguments.get_parsed_arg()
-
+            
         # Call subcommand.
         if 'func' in args:
             logger.info(f'freqtrade {__version__}')
