@@ -30,7 +30,7 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     :return: None
     """
     try:
-        import os   
+        import os
         working_directory = '/allah/freqtrade'
         os.chdir(working_directory)
         print('Welcome to Freqtrade! This is the Machine learning branch.')
@@ -48,7 +48,7 @@ def main(sysargv: Optional[List[str]] = None) -> None:
         setup_logging_pre()
         arguments = Arguments(sysargv)
         args = arguments.get_parsed_arg()
-            
+
         # Call subcommand.
         if 'func' in args:
             logger.info(f'freqtrade {__version__}')
