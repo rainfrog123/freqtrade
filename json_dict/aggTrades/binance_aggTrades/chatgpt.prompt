@@ -1,0 +1,30 @@
+agg_trade_id	open	high	low	close	quantity	first_trade_id	last_trade_id	is_buyer_maker
+0	2023-09-13 00:00:04	1.378371e+09	1592.29	1592.29	1592.01	1592.01	168.285	3.226147e+09	3.226147e+09	1.0
+1	2023-09-13 00:00:05	1.378371e+09	1592.02	1592.02	1592.01	1592.01	9.655	3.226147e+09	3.226147e+09	1.0
+2	2023-09-13 00:00:06	1.378371e+09	1592.02	1592.33	1592.01	1592.33	373.095	3.226147e+09	3.226148e+09	0.0
+345584	2023-09-16 23:59:56	1.380247e+09	1633.68	1633.68	1633.68	1633.68	0.000	3.232166e+09	3.232166e+09	0.0
+345585	2023-09-16 23:59:57	1.380247e+09	1633.68	1633.68	1633.68	1633.68	0.057	3.232166e+09	3.232166e+09	0.0
+345586	2023-09-16 23:59:58	1.380247e+09	1633.68	1633.68	1633.68	1633.68	0.000	3.232166e+09	3.232166e+09	0.0
+345587	2023-09-16 23:59:59	1.380247e+09	1633.68	1633.68	1633.68	1633.68	0.015	3.232166e+09	3.232166e+09	0.0  .  
+
+this is dataframe , make the last date to 2023-09-16 23:59:00, the second last date to 2023-09-16 23:58:00, and so on. use iterrows() to do this. every line backwards minus 1 minute.
+
+
+current_timestamp = pd.Timestamp('2023-09-16 23:59:59')
+
+# Iterate through the DataFrame in reverse order and modify timestamps
+for index, row in df.iterrows():
+    df.at[index, 'timestamp'] = current_timestamp
+    current_timestamp -= pd.Timedelta(minutes=1)
+
+# Display the modified DataFrame
+print(df)
+This code iterates through the DataFrame rows in reverse order and subtracts one minute from each timestamp using pd.Timedelta(minutes=1). It modifies the timestamps, effectively shifting them one minute earlier for each row.
+
+
+
+freqtrade list-data --userdir ./freqtrade/user_data/
+
+Found 33 pair / timeframe combinations.
+
+
