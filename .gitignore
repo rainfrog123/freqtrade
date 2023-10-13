@@ -19,7 +19,7 @@ freqtrade/rpc/api_server/ui/*
 build_helpers/ta-lib/*
 *.csv
 *.zip
-
+*.parquet
 # Macos related
 .DS_Store
 
