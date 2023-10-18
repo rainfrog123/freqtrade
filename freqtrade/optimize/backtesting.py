@@ -1411,7 +1411,7 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
-            # import os, json
+            import os, json
             # class TradeDataProcessor:
 
             #     def __init__(self, config, results, training_data):
@@ -1421,12 +1421,13 @@ class Backtesting:
 
             #     def process_and_export(self):
             #         strat_name = self.config['strategy']
-
-            #         # Create a DataFrame from training data (assuming it contains the 'ETH/USDT:USDT' key)
-            #         df = self.training_data.get('ETH/USDT:USDT')
+            #         pair_name = next(iter(self.training_data))
+            #         print(f'Processing and exporting trade data for {strat_name} on {pair_name}.')
+            #         # Create a DataFrame from training data (assuming it contains the pair_name key)
+            #         df = self.training_data.get(pair_name)
 
             #         if df is None:
-            #             print("Training data for 'ETH/USDT:USDT' not found.")
+            #             print("Training data for pair_name not found.")
             #             return
 
             #         # Loop through trade data and update DataFrame
@@ -1462,3 +1463,34 @@ class Backtesting:
             # processor = TradeDataProcessor(self.config, self.results, self.strategy.advise_all_indicators(data))
             # processor.process_and_export()
 
+        class TradeDataExporter:
+            def __init__(self, config, results, training_data):
+                self.config = config
+                self.results = results
+                self.training_data = training_data
+
+            def export_trades(self):
+                strat_name = self.config['strategy']
+                pair_name = next(iter(self.training_data))
+                print(f'Processing and exporting trade data for {strat_name} on {pair_name}.')
+                
+                # Create a DataFrame from training data (assuming it contains the pair_name key)
+                df = self.training_data.get(pair_name)
+
+                if df is None:
+                    print(f"Training data for {pair_name} not found.")
+                    return
+
+                trades = self.results['strategy'].get(strat_name, {}).get('trades', [])
+                return trades
+            def to_json(self, output_path):
+                trades = DataFrame(self.export_trades())
+
+                trades.to_json(output_path)
+
+        # Define the output path for the JSON file
+        json_output_path = os.path.join('/allah/freqtrade/Orange_project/json_files', 'trades.json')
+
+        # Create the TradeDataExporter and export trades to JSON
+        exporter = TradeDataExporter(self.config, self.results, self.strategy.advise_all_indicators(data))
+        exporter.to_json(json_output_path)
