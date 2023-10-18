@@ -3,6 +3,12 @@ freqtrade download-data -c config.json --timerange 20231001- --timeframes 1m 3m 
 
 freqtrade backtesting -c fake_1m_config.json --timerange 20100101- --timeframe 1m --strategy fake_1m_strat --eps --starting-balance 1000000000 --cache none 
 
+freqtrade backtesting -c fake_1m_config.json --timerange 19900101- --timeframe 1m --strategy fake_1m_strat_long --starting-balance 1000 --cache none --export signals
+
+freqtrade plot-dataframe -p BTC/USDT:USDT --strategy fake_1m_strat_long
+
+freqtrade backtesting-analysis -c fake_1m_config.json --analysis-groups 0 1 2 3 4 5
+
 config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '20100101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat', '--eps', '--starting-balance', '1000000000', '--cache', 'none']
 
 freqtrade trade -c config.json --strategy MacdStrategyCombined --starting-balance 10000
