@@ -1196,6 +1196,8 @@ class Backtesting:
         self.progress.init_step(BacktestState.BACKTEST, int(
             (end_date - start_date) / timedelta(minutes=self.timeframe_min)))
         # Loop timerange and get candle for each pair at that point in time
+        from tqdm import tqdm
+        pbar = tqdm(total=int(int((end_date - start_date) / timedelta(minutes=self.timeframe_min))))
         while current_time <= end_date:
             open_trade_count_start = LocalTrade.bt_open_open_trade_count
             self.check_abort()
@@ -1258,7 +1260,8 @@ class Backtesting:
             # Move time one configured time_interval ahead.
             self.progress.increment()
             current_time += timedelta(minutes=self.timeframe_min)
-
+            pbar.update(1)
+        pbar.close()
         self.handle_left_open(LocalTrade.bt_trades_open_pp, data=data)
         self.wallets.update()
 

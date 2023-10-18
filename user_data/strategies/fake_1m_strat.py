@@ -29,12 +29,12 @@ class fake_1m_strat(IStrategy):
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
     minimal_roi = {
-        "60": 10000
+        "0": 0.0006
     }
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.004
+    stoploss = -0.001
 
     # Trailing stoploss
     trailing_stop = False
