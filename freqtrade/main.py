@@ -38,12 +38,10 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             print('Welcome to Freqtrade! This is the Machine learning branch.')
             config_trade = ['--version']
 
-            # config_backtest = ['backtesting', '-c', 'config.json', '--timerange', '20231004-', '--timeframe', '1m', '--strategy', 'MacdStrategyLong', '--eps', '--starting-balance', '1000000000', '--cache', 'none']
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '20230219-20230220', '--timeframe', '1m', '--strategy', 'MacdStrategyLong', '--eps', '--starting-balance', '1000000000', '--cache', 'none']
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '19900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none', '--export', 'signals']
-            config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '20231001-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
-            # config_backtest = ['backtesting', '-c', 'config.json', '--timerange', '20230219-20230220', '--timeframe', '1m', '--strategy', 'MacdStrategyLong', '--eps', '--starting-balance', '1000000000', '--cache', 'none']
+            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
+
+            config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
+
 
             sysargv = config_backtest
         except Exception as e:

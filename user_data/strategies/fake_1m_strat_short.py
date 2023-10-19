@@ -28,6 +28,7 @@ class fake_1m_strat_short(IStrategy):
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
+
     minimal_roi = {
         "0": 0.0006
     }
@@ -37,7 +38,8 @@ class fake_1m_strat_short(IStrategy):
     stoploss = -0.001
 
     # Trailing stoploss
-    trailing_stop = False
+    # trailing_stop = True
+
     # trailing_only_offset_is_reached = False
     # trailing_stop_positive = 0.01
     # trailing_stop_positive_offset = 0.0  # Disabled / not configured
@@ -52,19 +54,11 @@ class fake_1m_strat_short(IStrategy):
         dataframe['macd'] = macd['macd']
         dataframe['macdsignal'] = macd['macdsignal']
         dataframe['macdhist'] = macd['macdhist']
-        return dataframe
 
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """
-        Based on TA indicators, populates the entry signal for the given dataframe
-        :param dataframe: DataFrame
-        :param metadata: Additional information, like the currently traded pair
-        :return: DataFrame with entry columns populated
-        """
         import feather
         data_from_feather = feather.read_dataframe('/allah/freqtrade/user_data/strategies/real_1s.feather')
-                 
         dataframe['real_1s'] = data_from_feather['real_1s']
+
         class DataFrameProcessor:
             def __init__(self, df):
                 self.df = df
@@ -72,8 +66,10 @@ class fake_1m_strat_short(IStrategy):
             def prepare_dataframe(self):
                 df_copy = self.df.copy()
                 # df_copy.drop("date", axis=1, inplace=True)
-                df_copy['real_1s'] = pd.to_datetime(df_copy['real_1s'])
+                # df_copy['real_1s'] = pd.to_datetime(df_copy['real_1s'])
                 df_copy = df_copy.sort_values(by='real_1s')
+                df_copy.sort_values(by='real_1s', inplace=True)  # In-place sorting
+
                 return df_copy
 
             def calculate_aggregated_sum(self, df):
@@ -107,12 +103,22 @@ class fake_1m_strat_short(IStrategy):
         # Usage
         df_processor = DataFrameProcessor(dataframe)
         dataframe = df_processor.process_data()
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Based on TA indicators, populates the entry signal for the given dataframe
+        :param dataframe: DataFrame
+        :param metadata: Additional information, like the currently traded pair
+        :return: DataFrame with entry columns populated
+        """
             
         condition_long = (dataframe['entry'] == 1) & (dataframe['close'] > dataframe['open_price'])
         condition_short = (dataframe['entry'] == 1) & (dataframe['close'] < dataframe['open_price'])
 
-        dataframe.loc[condition_long, 'enter_long'] = 1
-        # dataframe.loc[condition_short, 'enter_short'] = 1
+        # dataframe.loc[condition_long, 'enter_long'] = 1
+        
+        dataframe.loc[condition_short, 'enter_short'] = 1
 
 
         return dataframe
