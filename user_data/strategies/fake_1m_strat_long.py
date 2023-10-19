@@ -52,19 +52,11 @@ class fake_1m_strat_long(IStrategy):
         dataframe['macd'] = macd['macd']
         dataframe['macdsignal'] = macd['macdsignal']
         dataframe['macdhist'] = macd['macdhist']
-        return dataframe
-
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        """
-        Based on TA indicators, populates the entry signal for the given dataframe
-        :param dataframe: DataFrame
-        :param metadata: Additional information, like the currently traded pair
-        :return: DataFrame with entry columns populated
-        """
         import feather
         data_from_feather = feather.read_dataframe('/allah/freqtrade/user_data/strategies/real_1s.feather')
-                 
         dataframe['real_1s'] = data_from_feather['real_1s']
+
+
         class DataFrameProcessor:
             def __init__(self, df):
                 self.df = df
@@ -107,6 +99,15 @@ class fake_1m_strat_long(IStrategy):
         # Usage
         df_processor = DataFrameProcessor(dataframe)
         dataframe = df_processor.process_data()
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        """
+        Based on TA indicators, populates the entry signal for the given dataframe
+        :param dataframe: DataFrame
+        :param metadata: Additional information, like the currently traded pair
+        :return: DataFrame with entry columns populated
+        """
             
         condition_long = (dataframe['entry'] == 1) & (dataframe['close'] > dataframe['open_price'])
         condition_short = (dataframe['entry'] == 1) & (dataframe['close'] < dataframe['open_price'])
