@@ -44,3 +44,8 @@ freqtrade hyperopt -c fake_1m_config.json --hyperopt-loss SharpeHyperOptLossDail
 
 freqtrade hyperopt --hyperopt-loss SharpeHyperOptLossDaily --spaces roi stoploss --strategy fake_1m_strat_short --config fake_1m_config.json -e 100
 freqtrade hyperopt --hyperopt-loss SharpeHyperOptLossDaily --spaces trailing --strategy fake_1m_strat_short --config fake_1m_config.json -e 100
+
+socat TCP-LISTEN:19020,fork TCP:172.104.124.82:9000
+
+code --uninstall-extension ms-python.vscode-pylance
+
