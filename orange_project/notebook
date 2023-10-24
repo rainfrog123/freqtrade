@@ -49,3 +49,4 @@ socat TCP-LISTEN:19020,fork TCP:172.104.124.82:9000
 
 code --uninstall-extension ms-python.vscode-pylance
 
+mv !(history) /allah/stuff/ml/history/   shopt -s extglob
