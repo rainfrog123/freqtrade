@@ -588,8 +588,8 @@ class Exchange:
             raise OperationalException(
                 f"Invalid timeframe '{timeframe}'. This exchange supports: {self.timeframes}")
 
-        if timeframe and timeframe_to_minutes(timeframe) < 1:
-            raise OperationalException("Timeframes < 1m are currently not supported by Freqtrade.")
+        # if timeframe and timeframe_to_minutes(timeframe) < 1:
+        #     raise OperationalException("Timeframes < 1m are currently not supported by Freqtrade.")
 
     def validate_ordertypes(self, order_types: Dict) -> None:
         """

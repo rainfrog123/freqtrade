@@ -38,12 +38,11 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             print('Welcome to Freqtrade! This is the Machine learning branch.')
             config_trade = ['--version']
 
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
+            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
 
-            config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
+            config_download_1s_data = ['download-data', '-c', 'xrp_download.json', '--timerange', '20231020-', '--timeframes', '1s']
 
-
-            sysargv = config_backtest
+            sysargv = config_download_1s_data
         except Exception as e:
             print(e)
     else:
