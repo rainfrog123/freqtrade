@@ -29,7 +29,8 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     This function will initiate the bot and start the trading loop.
     :return: None
     """
-    debug_input = input('Debug mode? (y/n): ')
+    # debug_input = input('Debug mode? (y/n): ')
+    debug_input = 'y'
     if debug_input == 'y':
         try:
             import os
@@ -40,8 +41,9 @@ def main(sysargv: Optional[List[str]] = None) -> None:
 
             # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
 
-            config_download_1s_data = ['download-data', '-c', 'xrp_download.json', '--timerange', '20231020-', '--timeframes', '1s']
-
+            # config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--days', '1', '--timeframes', '1s']
+            config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--days', '1', '--timeframes', '1s', '--dl-trades']
+            # config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--timerange', '20231028-', '--timeframes', '1s']
             sysargv = config_download_1s_data
         except Exception as e:
             print(e)

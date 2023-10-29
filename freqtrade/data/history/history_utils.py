@@ -507,7 +507,8 @@ def download_data_main(config: Config) -> None:
     try:
         if config.get('download_trades'):
             if config.get('trading_mode') == 'futures':
-                raise OperationalException("Trade download not supported for futures.")
+                pass
+                # raise OperationalException("Trade download not supported for futures.")
             pairs_not_available = refresh_backtest_trades_data(
                 exchange, pairs=expanded_pairs, datadir=config['datadir'],
                 timerange=timerange, new_pairs_days=config['new_pairs_days'],
