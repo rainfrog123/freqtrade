@@ -27,3 +27,4 @@ from freqtrade.commands.plot_commands import start_plot_dataframe, start_plot_pr
 from freqtrade.commands.strategy_utils_commands import start_strategy_update
 from freqtrade.commands.trade_commands import start_trading
 from freqtrade.commands.webserver_commands import start_webserver
+from freqtrade.commands.add_1s import start_download_1s_data

@@ -37,21 +37,24 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             working_directory = '/allah/freqtrade'
             os.chdir(working_directory)
             print('Welcome to Freqtrade! This is the Machine learning branch.')
-            config_trade = ['--version']
 
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
+            config = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1s', '--strategy', 'fake_1s_strat_short', '--starting-balance', '1000', '--cache', 'none']
 
             # config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--days', '1', '--timeframes', '1s']
-            config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--days', '1', '--timeframes', '1s', '--dl-trades']
+
+
+
+            # config = ['download-1s-data', '--days', '3']
+
             # config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--timerange', '20231028-', '--timeframes', '1s']
-            sysargv = config_download_1s_data
+            sysargv = config
         except Exception as e:
             print(e)
     else:
         pass
 
     return_code: Any = 1
-    try:
+    try:  
         setup_logging_pre()
         arguments = Arguments(sysargv)
         args = arguments.get_parsed_arg()

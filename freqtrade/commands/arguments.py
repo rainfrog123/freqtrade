@@ -114,7 +114,7 @@ NO_CONF_REQURIED = ["convert-data", "convert-trade-data", "download-data", "list
                     "plot-dataframe", "plot-profit", "show-trades", "trades-to-ohlcv",
                     "strategy-updater"]
 
-NO_CONF_ALLOWED = ["create-userdir", "list-exchanges", "new-strategy"]
+NO_CONF_ALLOWED = ["create-userdir", "list-exchanges", "new-strategy", "add-1s"]
 
 ARGS_STRATEGY_UPDATER = ["strategy_list", "strategy_path", "recursive_strategy_search"]
 
@@ -210,7 +210,7 @@ class Arguments:
                                         start_new_strategy, start_plot_dataframe, start_plot_profit,
                                         start_recursive_analysis, start_show_trades,
                                         start_strategy_update, start_test_pairlist, start_trading,
-                                        start_webserver)
+                                        start_webserver, start_download_1s_data)
 
         subparsers = self.parser.add_subparsers(dest='command',
                                                 # Use custom message when no subhandler is added
@@ -219,6 +219,11 @@ class Arguments:
                                                 )
 
         # Add trade subcommand
+        ARGS_download_1s_data = ["days"]
+        download_1s_data_cmd = subparsers.add_parser('download_1s_data', help='Your new command description')
+        download_1s_data_cmd.set_defaults(func=start_download_1s_data)
+        self._build_args(optionlist=ARGS_download_1s_data, parser=download_1s_data_cmd)
+
         trade_cmd = subparsers.add_parser('trade', help='Trade module.',
                                           parents=[_common_parser, _strategy_parser])
         trade_cmd.set_defaults(func=start_trading)

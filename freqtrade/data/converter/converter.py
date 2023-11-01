@@ -101,8 +101,8 @@ def ohlcv_fill_up_missing_data(dataframe: DataFrame, timeframe: str, pair: str) 
     elif timeframe_minutes > 43200:
         resample_interval = timeframe
     # Resample to create "NAN" values
-    df = dataframe.resample(resample_interval, on='date').agg(ohlcv_dict)
-
+    # df = dataframe.resample(resample_interval, on='date').agg(ohlcv_dict)
+    df = dataframe.resample('1s', on='date').agg(ohlcv_dict)
     # Forwardfill close for missing columns
     df['close'] = df['close'].ffill()
     # Use close for "open, high, low"

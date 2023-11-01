@@ -118,7 +118,8 @@ class Backtesting:
                                        "configuration or as cli argument `--timeframe 5m`")
         self.timeframe = str(self.config.get('timeframe'))
         self.disable_database_use()
-        self.timeframe_min = timeframe_to_minutes(self.timeframe)
+        self.timeframe_sec = timeframe_to_minutes(self.timeframe)
+        self.timeframe_sec = timeframe_to_seconds(self.timeframe)
         self.init_backtest_detail()
         self.pairlists = PairListManager(self.exchange, self.config, self.dataprovider)
         self._validate_pairlists_for_backtesting()
@@ -185,7 +186,7 @@ class Backtesting:
         self.timeframe_detail = str(self.config.get('timeframe_detail', ''))
         if self.timeframe_detail:
             self.timeframe_detail_min = timeframe_to_minutes(self.timeframe_detail)
-            if self.timeframe_min <= self.timeframe_detail_min:
+            if self.timeframe_sec <= self.timeframe_detail_min:
                 raise OperationalException(
                     "Detail timeframe must be smaller than strategy timeframe.")
 
@@ -473,7 +474,7 @@ class Backtesting:
         side_1 = -1 if is_short else 1
         roi_entry, roi = self.strategy.min_roi_reached_entry(trade_dur)
         if roi is not None and roi_entry is not None:
-            if roi == -1 and roi_entry % self.timeframe_min == 0:
+            if roi == -1 and roi_entry % self.timeframe_sec == 0:
                 # When force_exiting with ROI=-1, the roi time will always be equal to trade_dur.
                 # If that entry is a multiple of the timeframe (so on candle open)
                 # - we'll use open instead of close
@@ -488,7 +489,7 @@ class Backtesting:
             else:
                 is_new_roi = row[OPEN_IDX] > close_rate
             if (trade_dur > 0 and trade_dur == roi_entry
-                    and roi_entry % self.timeframe_min == 0
+                    and roi_entry % self.timeframe_sec == 0
                     and is_new_roi):
                 # new ROI entry came into effect.
                 # use Open rate if open_rate > calculated exit rate
@@ -623,7 +624,8 @@ class Backtesting:
             trade.close_date = current_time
             exit_reason = exit_.exit_reason
             amount_ = amount if amount is not None else trade.amount
-            trade_dur = int((trade.close_date_utc - trade.open_date_utc).total_seconds() // 60)
+            # trade_dur = int((trade.close_date_utc - trade.open_date_utc).total_seconds() // 60)
+            trade_dur = int((trade.close_date_utc - trade.open_date_utc).total_seconds())
             try:
                 close_rate = self._get_close_rate(row, trade, exit_, trade_dur)
             except ValueError:
@@ -1191,14 +1193,14 @@ class Backtesting:
 
         # Indexes per pair, so some pairs are allowed to have a missing start.
         indexes: Dict = defaultdict(int)
-        current_time = start_date + timedelta(minutes=self.timeframe_min)
+        current_time = start_date + timedelta(seconds=self.timeframe_sec)
 
-        self.progress.init_step(BacktestState.BACKTEST, int(
-            (end_date - start_date) / timedelta(minutes=self.timeframe_min)))
+        # self.progress.init_step(BacktestState.BACKTEST, int( (end_date - start_date) / timedelta(seconds=self.timeframe_sec)))
+        self.progress.init_step(BacktestState.BACKTEST, int( (end_date - start_date) / timedelta(seconds=1) ))
         # Loop timerange and get candle for each pair at that point in time
         if self.dataprovider.runmode == RunMode.BACKTEST:
             from tqdm import tqdm
-            pbar = tqdm(total=int(int((end_date - start_date) / timedelta(minutes=self.timeframe_min))))
+            pbar = tqdm(total=int(int((end_date - start_date) / timedelta(seconds=self.timeframe_sec))))
         while current_time <= end_date:
             open_trade_count_start = LocalTrade.bt_open_open_trade_count
             self.check_abort()
@@ -1224,7 +1226,7 @@ class Backtesting:
                     # Spread out into detail timeframe.
                     # Should only happen when we are either in a trade for this pair
                     # or when we got the signal for a new trade.
-                    exit_candle_end = current_detail_time + timedelta(minutes=self.timeframe_min)
+                    exit_candle_end = current_detail_time + timedelta(seconds=self.timeframe_sec)
 
                     detail_data = self.detail_data[pair]
                     detail_data = detail_data.loc[
@@ -1251,6 +1253,7 @@ class Backtesting:
                             det_row, pair, current_time_det, end_date,
                             open_trade_count_start, trade_dir, is_first)
                         current_time_det += timedelta(minutes=self.timeframe_detail_min)
+                        # current_time_det += timedelta(seconds=self.timeframe_sec)
                         is_first = False
                 else:
                     self.dataprovider._set_dataframe_max_date(current_time)
@@ -1260,7 +1263,7 @@ class Backtesting:
 
             # Move time one configured time_interval ahead.
             self.progress.increment()
-            current_time += timedelta(minutes=self.timeframe_min)
+            current_time += timedelta(seconds=1)
             if self.dataprovider.runmode == RunMode.BACKTEST:
                 pbar.update(1)
         if self.dataprovider.runmode == RunMode.BACKTEST:
@@ -1310,9 +1313,12 @@ class Backtesting:
         # Use preprocessed_tmp for date generation (the trimmed dataframe).
         # Backtesting will re-trim the dataframes after entry/exit signal generation.
         min_date, max_date = history.get_timerange(preprocessed_tmp)
-        logger.info(f'Backtesting with data from {min_date.strftime(DATETIME_PRINT_FORMAT)} '
-                    f'up to {max_date.strftime(DATETIME_PRINT_FORMAT)} '
-                    f'({(max_date - min_date).days} days).')
+        try:
+            logger.info(f'Backtesting with data from {min_date.strftime(DATETIME_PRINT_FORMAT)} '
+                        f'up to {max_date.strftime(DATETIME_PRINT_FORMAT)} '
+                        f'({(max_date - min_date).days} days).')
+        except:
+            logger.info(f'flag here')
         # Execute backtest and store results
         results = self.backtest(
             processed=preprocessed,
