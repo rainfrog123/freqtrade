@@ -57,3 +57,5 @@ mv !(history) /allah/stuff/freq/history/   shopt -s extglob
 
 
  "https": "http://172.104.124.82:49150"
+
+ssh root@192.168.31.238

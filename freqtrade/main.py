@@ -30,7 +30,7 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     :return: None
     """
     # debug_input = input('Debug mode? (y/n): ')
-    debug_input = 'y'
+    debug_input = 'n'
     if debug_input == 'y':
         try:
             import os
@@ -38,11 +38,9 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             os.chdir(working_directory)
             print('Welcome to Freqtrade! This is the Machine learning branch.')
 
-            config = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1s', '--strategy', 'fake_1s_strat_short', '--starting-balance', '1000', '--cache', 'none']
+            config = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '20231005-20231006', '--timeframe', '1s', '--strategy', 'fake_1s_strat_short', '--starting-balance', '1000', '--cache', 'none']
 
             # config_download_1s_data = ['download-data', '-c', 'fake_1m_config.json', '--days', '1', '--timeframes', '1s']
-
-
 
             # config = ['download-1s-data', '--days', '3']
 
@@ -54,7 +52,7 @@ def main(sysargv: Optional[List[str]] = None) -> None:
         pass
 
     return_code: Any = 1
-    try:  
+    try:
         setup_logging_pre()
         arguments = Arguments(sysargv)
         args = arguments.get_parsed_arg()
