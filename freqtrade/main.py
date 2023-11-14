@@ -29,25 +29,25 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     This function will initiate the bot and start the trading loop.
     :return: None
     """
-    debug_input = input('Debug mode? (y/n): ')
-    if debug_input == 'y':
-        try:
-            import os
-            working_directory = '/allah/freqtrade'
-            os.chdir(working_directory)
-            print('Welcome to Freqtrade! This is the Machine learning branch.')
-            config_trade = ['--version']
+    # debug_input = input('Debug mode? (y/n): ')
+    # if debug_input == 'y':
+    #     try:
+    #         import os
+    #         working_directory = '/allah/freqtrade'
+    #         os.chdir(working_directory)
+    #         print('Welcome to Freqtrade! This is the Machine learning branch.')
+    #         config_trade = ['--version']
 
-            # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
+    #         # config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_long', '--starting-balance', '1000', '--cache', 'none']
 
-            config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
+    #         config_backtest = ['backtesting', '-c', 'fake_1m_config.json', '--timerange', '18900101-', '--timeframe', '1m', '--strategy', 'fake_1m_strat_short', '--starting-balance', '1000', '--cache', 'none']
 
 
-            sysargv = config_backtest
-        except Exception as e:
-            print(e)
-    else:
-        pass
+    #         sysargv = config_backtest
+    #     except Exception as e:
+    #         print(e)
+    # else:
+    #     pass
 
     return_code: Any = 1
     try:
