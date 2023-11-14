@@ -32,7 +32,7 @@ class LuxAlgoTEMA20Strategy(IStrategy):
 
     def informative_pairs(self):
         return []
-        
+
     def populate_indicators(self, dataframe, metadata):
         # Calculate TEMA indicators
         timeperiod_tema = 50
