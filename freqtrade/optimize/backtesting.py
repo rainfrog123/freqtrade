@@ -1465,35 +1465,35 @@ class Backtesting:
             #         print('Processing and export done.')
             # processor = TradeDataProcessor(self.config, self.results, self.strategy.advise_all_indicators(data))
             # processor.process_and_export()
+            import os, json
+            class TradeDataExporter:
+                def __init__(self, config, results, training_data):
+                    self.config = config
+                    self.results = results
+                    self.training_data = training_data
 
-        # class TradeDataExporter:
-        #     def __init__(self, config, results, training_data):
-        #         self.config = config
-        #         self.results = results
-        #         self.training_data = training_data
+                def export_trades(self):
+                    strat_name = self.config['strategy']
+                    pair_name = next(iter(self.training_data))
+                    print(f'Processing and exporting trade data for {strat_name} on {pair_name}.')
 
-        #     def export_trades(self):
-        #         strat_name = self.config['strategy']
-        #         pair_name = next(iter(self.training_data))
-        #         print(f'Processing and exporting trade data for {strat_name} on {pair_name}.')
+                    # Create a DataFrame from training data (assuming it contains the pair_name key)
+                    df = self.training_data.get(pair_name)
 
-        #         # Create a DataFrame from training data (assuming it contains the pair_name key)
-        #         df = self.training_data.get(pair_name)
+                    if df is None:
+                        print(f"Training data for {pair_name} not found.")
+                        return
 
-        #         if df is None:
-        #             print(f"Training data for {pair_name} not found.")
-        #             return
+                    trades = self.results['strategy'].get(strat_name, {}).get('trades', [])
+                    return trades
+                def to_json(self, output_path):
+                    trades = DataFrame(self.export_trades())
 
-        #         trades = self.results['strategy'].get(strat_name, {}).get('trades', [])
-        #         return trades
-        #     def to_json(self, output_path):
-        #         trades = DataFrame(self.export_trades())
+                    trades.to_json(output_path)
 
-        #         trades.to_json(output_path)
+            # Define the output path for the JSON file
+            json_output_path = os.path.join('/allah/freqtrade/orange_project/json_files', 'trades.json')
 
-        # # Define the output path for the JSON file
-        # json_output_path = os.path.join('/allah/freqtrade/Orange_project/json_files', 'trades.json')
-
-        # # Create the TradeDataExporter and export trades to JSON
-        # exporter = TradeDataExporter(self.config, self.results, self.strategy.advise_all_indicators(data))
-        # exporter.to_json(json_output_path)
+            # Create the TradeDataExporter and export trades to JSON
+            exporter = TradeDataExporter(self.config, self.results, self.strategy.advise_all_indicators(data))
+            exporter.to_json(json_output_path)
