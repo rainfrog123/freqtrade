@@ -23,10 +23,11 @@ class LuxAlgoTEMA20Strategy(IStrategy):
     can_short: bool = True
 
     minimal_roi = {
+        # "0": 0.001,
         "60": 100000
     }
 
-    stoploss = -0.001
+    stoploss = -0.002
     trailing_stop = True
     startup_candle_count: int = 30
 

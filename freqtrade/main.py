@@ -30,8 +30,8 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     :return: None
     """
     # debug_input = input('Debug mode? (y/n): ')
-    debug_input = 'y'
-    if debug_input.lower() == 'y':
+    debug_input = 0
+    if debug_input == 1:
         try:
             import os
             working_directory = '/allah/freqtrade'
