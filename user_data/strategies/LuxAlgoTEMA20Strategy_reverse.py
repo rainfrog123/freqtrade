@@ -7,26 +7,23 @@ import pandas as pd  # noqa
 from pandas import DataFrame
 from typing import Optional, Union
 
+# Import necessary libraries
+import talib.abstract as ta
+import freqtrade.vendor.qtpylib.indicators as qtpylib
 from freqtrade.strategy import (BooleanParameter, CategoricalParameter, DecimalParameter,
                                 IStrategy, IntParameter)
 
-# --------------------------------
-# Add your lib to import here
-import talib.abstract as ta
-import freqtrade.vendor.qtpylib.indicators as qtpylib
-
-
-class LuxAlgoTEMA20Strategy(IStrategy):
+class LuxAlgoTEMA20Strategy_reverse(IStrategy):
     INTERFACE_VERSION = 3
 
+    # Set default timeframe and allow shorting
     timeframe = '1m'
     can_short: bool = True
 
+    # Define minimal ROI and stoploss settings
     minimal_roi = {
-        # "0": 0.001,
         "60": 100000
     }
-
     stoploss = -0.002
     trailing_stop = True
     startup_candle_count: int = 30
@@ -64,7 +61,7 @@ class LuxAlgoTEMA20Strategy(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: DataFrame with entry columns populated
         """
-        # Your entry logic here
+        # Entry logic for short and long conditions
         short_condition = (dataframe['consecutive_bars_raising']) & (dataframe['tema'] < dataframe['tema'].shift())
         long_condition = (dataframe['consecutive_bars_falling']) & (dataframe['tema'] > dataframe['tema'].shift())
 
@@ -82,9 +79,12 @@ class LuxAlgoTEMA20Strategy(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: DataFrame with exit columns populated
         """
-        # Your exit logic here
-        dataframe[dataframe['consecutive_bars_raising'] == True]
-        dataframe[dataframe['consecutive_bars_falling'] == True]
-        dataframe[dataframe['enter_long'] == 1]
-        dataframe['consecutive_bars_raising']
+        # Exit logic: filter rows based on specific conditions
+        # exit_conditions = (
+        #     (dataframe['consecutive_bars_raising'] == True) |
+        #     (dataframe['consecutive_bars_falling'] == True) |
+        #     (dataframe['enter_long'] == 1)
+        # )
+        # dataframe = dataframe[exit_conditions]
+
         return dataframe
