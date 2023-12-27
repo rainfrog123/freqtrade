@@ -10,8 +10,9 @@ from typing import Optional, Union
 # Import necessary libraries
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
-from freqtrade.strategy import (BooleanParameter, CategoricalParameter, DecimalParameter,
+from freqtrade.strategy import (BooleanParameter, CategoricalParameter, DecimalParameter, 
                                 IStrategy, IntParameter)
+from freqtrade.optimize.space import Categorical, Dimension, Integer, SKDecimal
 
 class LuxAlgoTEMA20Strategy_follow(IStrategy):
     INTERFACE_VERSION = 3
@@ -21,16 +22,21 @@ class LuxAlgoTEMA20Strategy_follow(IStrategy):
     can_short: bool = True
 
     # Define minimal ROI and stoploss settings
+
     minimal_roi = {
-        "60": 100000
-    }
+        "0" : 10000
+          }
+    
     stoploss = -0.002
 
-    stoploss = DecimalParameter(-0.02, -0.005, default=-0.002, space='buy', optimize=True, load=True)
 
     trailing_stop = True
     startup_candle_count: int = 30
-
+    class HyperOpt:
+        # Define a custom stoploss space.
+        def stoploss_space():
+            return [SKDecimal(-0.004, -0.001, decimals=4, name='stoploss')]
+        
     def informative_pairs(self):
         return []
 

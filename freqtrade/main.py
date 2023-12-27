@@ -38,16 +38,27 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             os.chdir(working_directory)
             print('Welcome to Freqtrade! This is the Machine learning branch.')
 
+            # config = [
+            #     'backtesting',
+            #     '-c', 'config.json',
+            #     '--timerange', '20231111-',
+            #     '--timeframe', '1m',
+            #     '--strategy', 'LuxAlgoTEMA20Strategy',
+            #     '--starting-balance', '1000',
+            #     '--cache', 'none',
+            #     '--eps'
+            # ]
             config = [
-                'backtesting',
-                '-c', 'config.json',
-                '--timerange', '20231111-',
-                '--timeframe', '1m',
-                '--strategy', 'LuxAlgoTEMA20Strategy',
-                '--starting-balance', '1000',
-                '--cache', 'none',
-                '--eps'
-            ]
+                    "hyperopt",
+                    "--hyperopt-loss", "SharpeHyperOptLossDaily",
+                    "--spaces", "stoploss",
+                    "--strategy", "LuxAlgoTEMA20Strategy_follow",
+                    "-c", "config.json",
+                    "-e", "100",
+                    "--timerange", "20231201-",
+                    "--timeframe", "1m"
+                ]
+
 
             sysargv = config
 
