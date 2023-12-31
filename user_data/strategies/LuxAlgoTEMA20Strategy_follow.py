@@ -1,8 +1,6 @@
-# pragma pylint: disable=missing-docstring, invalid-name, pointless-string-statement
-# flake8: noqa: F401
-# isort: skip_file
 # --- Do not remove these libs ---
 import numpy as np  # noqa
+from datetime import datetime, timedelta
 import pandas as pd  # noqa
 from pandas import DataFrame
 from typing import Optional, Union
@@ -22,21 +20,26 @@ class LuxAlgoTEMA20Strategy_follow(IStrategy):
     can_short: bool = True
 
     # Define minimal ROI and stoploss settings
-
     minimal_roi = {
         "0" : 10000
-          }
-    
-    stoploss = -0.002
-
-
+    }
+    stoploss = -0.0023
     trailing_stop = True
     startup_candle_count: int = 30
+
+    # Optimal for the strategy
+    tema_window_size = IntParameter(10, 25, default=20, space='buy', optimize=True)
+
     class HyperOpt:
         # Define a custom stoploss space.
         def stoploss_space():
-            return [SKDecimal(-0.004, -0.001, decimals=4, name='stoploss')]
+            return [SKDecimal(-0.0035, -0.001, decimals=4, name='stoploss')]
         
+    def leverage(self, pair: str, current_time: datetime, current_rate: float,
+                proposed_leverage: float, max_leverage: float, entry_tag: Optional[str], side: str,
+                **kwargs) -> float:
+        return 125.0  # Default leverage for other cases
+
     def informative_pairs(self):
         return []
 
@@ -51,32 +54,31 @@ class LuxAlgoTEMA20Strategy_follow(IStrategy):
         # Calculate TEMA indicators
         timeperiod_tema = 50
         dataframe['tema'] = ta.TEMA(dataframe, timeperiod=timeperiod_tema)
-
-        # Calculate consecutive trend duration
-        is_rising = dataframe['tema'] > dataframe['tema'].shift()
-        is_falling = dataframe['tema'] < dataframe['tema'].shift()
-
-        window_size = 10
-        dataframe['consecutive_bars_raising'] = is_rising.rolling(window=window_size + 1).sum() == window_size
-        dataframe['consecutive_bars_falling'] = is_falling.rolling(window=window_size + 1).sum() == window_size
+        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
 
         return dataframe
 
     def populate_entry_trend(self, dataframe, metadata):
-        """
-        Based on TA indicators, populates the entry signal for the given dataframe.
+        # Calculate consecutive trend duration
+        is_rising_tema = dataframe['tema'] > dataframe['tema'].shift()
+        is_falling_tema = dataframe['tema'] < dataframe['tema'].shift()
 
-        :param dataframe: DataFrame
-        :param metadata: Additional information, like the currently traded pair
-        :return: DataFrame with entry columns populated
-        """
-        # Entry logic for short and long conditions
-        short_condition = dataframe['consecutive_bars_falling']
-        long_condition = dataframe['consecutive_bars_raising']
+        # Set default window size
+        tema_window_size = 10
+        if self.tema_window_size.value:
+            tema_window_size = self.tema_window_size.value
+
+        # Calculate consecutive rising and falling bars for tema
+        dataframe['consecutive_bars_raising_tema'] = is_rising_tema.rolling(window=tema_window_size + 1).sum() == tema_window_size
+        dataframe['consecutive_bars_falling_tema'] = is_falling_tema.rolling(window=tema_window_size + 1).sum() == tema_window_size
+
+        # Entry logic for short and long conditions using lambda functions
+        short_conditions = lambda df: df['consecutive_bars_falling_tema']
+        long_conditions = lambda df: df['consecutive_bars_raising_tema']
 
         # Populate entry signals
-        dataframe['enter_short'] = short_condition.astype(int)
-        dataframe['enter_long'] = long_condition.astype(int)
+        dataframe['enter_short'] = short_conditions(dataframe).astype(int)
+        dataframe['enter_long'] = long_conditions(dataframe).astype(int)
 
         return dataframe
 
@@ -88,12 +90,5 @@ class LuxAlgoTEMA20Strategy_follow(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: DataFrame with exit columns populated
         """
-        # Exit logic: filter rows based on specific conditions
-        # exit_conditions = (
-        #     (dataframe['consecutive_bars_raising'] == True) |
-        #     (dataframe['consecutive_bars_falling'] == True) |
-        #     (dataframe['enter_long'] == 1)
-        # )
-        # dataframe = dataframe[exit_conditions]
 
         return dataframe
