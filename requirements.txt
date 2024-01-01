@@ -2,7 +2,7 @@ numpy==1.26.2
 pandas==2.1.4
 pandas-ta==0.3.14b
 
-ccxt==4.1.98
+ccxt==4.2.2
 cryptography==41.0.7
 aiohttp==3.9.1
 SQLAlchemy==2.0.23
@@ -36,7 +36,7 @@ orjson==3.9.10
 sdnotify==0.3.2
 
 # API Server
-fastapi==0.105.0
+fastapi==0.108.0
 pydantic==2.5.3
 uvicorn==0.25.0
 pyjwt==2.8.0
@@ -58,5 +58,5 @@ schedule==1.2.1
 websockets==12.0
 janus==1.0.0
 
-ast-comments==1.2.0
+ast-comments==1.2.1
 packaging==23.2
