@@ -1489,7 +1489,8 @@ class Backtesting:
             #         print('Processing and export done.')
             # processor = TradeDataProcessor(self.config, self.results, self.strategy.advise_all_indicators(data))
             # processor.process_and_export()
-            import os, json
+            import json
+            import os
             class TradeDataExporter:
                 def __init__(self, config, results, training_data):
                     self.config = config
