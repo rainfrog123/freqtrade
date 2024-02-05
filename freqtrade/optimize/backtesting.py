@@ -24,7 +24,7 @@ from freqtrade.enums import (BacktestState, CandleType, ExitCheckTuple, ExitType
                              TradingMode)
 from freqtrade.exceptions import DependencyException, OperationalException
 from freqtrade.exchange import (amount_to_contract_precision, price_to_precision,
-                                timeframe_to_minutes, timeframe_to_seconds)
+                                timeframe_to_seconds)
 from freqtrade.exchange.exchange import Exchange
 from freqtrade.mixins import LoggingMixin
 from freqtrade.optimize.backtest_caching import get_strategy_run_id
@@ -34,7 +34,8 @@ from freqtrade.optimize.optimize_reports import (generate_backtest_stats, genera
                                                  show_backtest_results,
                                                  store_backtest_analysis_results,
                                                  store_backtest_stats)
-from freqtrade.persistence import LocalTrade, Order, PairLocks, Trade
+from freqtrade.persistence import (LocalTrade, Order, PairLocks, Trade, disable_database_use,
+                                   enable_database_use)
 from freqtrade.plugins.pairlistmanager import PairListManager
 from freqtrade.plugins.protectionmanager import ProtectionManager
 from freqtrade.resolvers import ExchangeResolver, StrategyResolver
@@ -117,6 +118,9 @@ class Backtesting:
             raise OperationalException("Timeframe needs to be set in either "
                                        "configuration or as cli argument `--timeframe 5m`")
         self.timeframe = str(self.config.get('timeframe'))
+        self.timeframe_secs = timeframe_to_seconds(self.timeframe)
+        self.timeframe_min = self.timeframe_secs // 60
+        self.timeframe_td = timedelta(seconds=self.timeframe_secs)
         self.disable_database_use()
         self.timeframe_sec = timeframe_to_minutes(self.timeframe)
         self.timeframe_sec = timeframe_to_seconds(self.timeframe)
@@ -179,8 +183,7 @@ class Backtesting:
     @staticmethod
     def cleanup():
         LoggingMixin.show_output = True
-        PairLocks.use_db = True
-        Trade.use_db = True
+        enable_database_use()
 
     def init_backtest_detail(self) -> None:
         # Load detail timeframe if specified
@@ -192,7 +195,7 @@ class Backtesting:
                     "Detail timeframe must be smaller than strategy timeframe.")
 
         else:
-            self.timeframe_detail_min = 0
+            self.timeframe_detail_td = timedelta(seconds=0)
         self.detail_data: Dict[str, DataFrame] = {}
         self.futures_data: Dict[str, DataFrame] = {}
 
@@ -327,9 +330,7 @@ class Backtesting:
             self.futures_data = {}
 
     def disable_database_use(self):
-        PairLocks.use_db = False
-        PairLocks.timeframe = self.timeframe
-        Trade.use_db = False
+        disable_database_use(self.timeframe)
 
     def prepare_backtest(self, enable_protections):
         """
@@ -540,14 +541,14 @@ class Backtesting:
         min_stake = self.exchange.get_min_pair_stake_amount(trade.pair, current_rate, -0.1)
         max_stake = self.exchange.get_max_pair_stake_amount(trade.pair, current_rate)
         stake_available = self.wallets.get_available_stake_amount()
-        stake_amount = strategy_safe_wrapper(self.strategy.adjust_trade_position,
-                                             default_retval=None, supress_error=True)(
+        stake_amount, order_tag = self.strategy._adjust_trade_position_internal(
             trade=trade,  # type: ignore[arg-type]
             current_time=current_time, current_rate=current_rate,
             current_profit=current_profit, min_stake=min_stake,
             max_stake=min(max_stake, stake_available),
             current_entry_rate=current_rate, current_exit_rate=current_rate,
-            current_entry_profit=current_profit, current_exit_profit=current_profit)
+            current_entry_profit=current_profit, current_exit_profit=current_profit
+        )
 
         # Check if we should increase our position
         if stake_amount is not None and stake_amount > 0.0:
@@ -557,7 +558,8 @@ class Backtesting:
                 check_adjust_entry = (entry_count <= self.strategy.max_entry_position_adjustment)
             if check_adjust_entry:
                 pos_trade = self._enter_trade(
-                    trade.pair, row, 'short' if trade.is_short else 'long', stake_amount, trade)
+                    trade.pair, row, 'short' if trade.is_short else 'long', stake_amount, trade,
+                    entry_tag1=order_tag)
                 if pos_trade is not None:
                     self.wallets.update()
                     return pos_trade
@@ -572,7 +574,7 @@ class Backtesting:
             if min_stake and remaining != 0 and remaining < min_stake:
                 # Remaining stake is too low to be sold.
                 return trade
-            exit_ = ExitCheckTuple(ExitType.PARTIAL_EXIT)
+            exit_ = ExitCheckTuple(ExitType.PARTIAL_EXIT, order_tag)
             pos_trade = self._get_exit_for_signal(trade, row, exit_, current_time, amount)
             if pos_trade is not None:
                 order = pos_trade.orders[-1]
@@ -685,11 +687,11 @@ class Backtesting:
 
             trade.exit_reason = exit_reason
 
-            return self._exit_trade(trade, row, close_rate, amount_)
+            return self._exit_trade(trade, row, close_rate, amount_, exit_reason)
         return None
 
-    def _exit_trade(self, trade: LocalTrade, sell_row: Tuple,
-                    close_rate: float, amount: Optional[float] = None) -> Optional[LocalTrade]:
+    def _exit_trade(self, trade: LocalTrade, sell_row: Tuple, close_rate: float,
+                    amount: float, exit_reason: Optional[str]) -> Optional[LocalTrade]:
         self.order_id_counter += 1
         exit_candle_time = sell_row[DATE_IDX].to_pydatetime()
         order_type = self.strategy.order_types['exit']
@@ -716,6 +718,7 @@ class Backtesting:
             filled=0,
             remaining=amount,
             cost=amount * close_rate,
+            ft_order_tag=exit_reason,
         )
         order._trade_bt = trade
         trade.orders.append(order)
@@ -839,7 +842,9 @@ class Backtesting:
                      stake_amount: Optional[float] = None,
                      trade: Optional[LocalTrade] = None,
                      requested_rate: Optional[float] = None,
-                     requested_stake: Optional[float] = None) -> Optional[LocalTrade]:
+                     requested_stake: Optional[float] = None,
+                     entry_tag1: Optional[str] = None
+                     ) -> Optional[LocalTrade]:
         """
         :param trade: Trade to adjust - initial entry if None
         :param requested_rate: Adjusted entry rate
@@ -847,7 +852,7 @@ class Backtesting:
         """
 
         current_time = row[DATE_IDX].to_pydatetime()
-        entry_tag = row[ENTER_TAG_IDX] if len(row) >= ENTER_TAG_IDX + 1 else None
+        entry_tag = entry_tag1 or (row[ENTER_TAG_IDX] if len(row) >= ENTER_TAG_IDX + 1 else None)
         # let's call the custom entry price, using the open price as default price
         order_type = self.strategy.order_types['entry']
         pos_adjust = trade is not None and requested_rate is None
@@ -948,6 +953,7 @@ class Backtesting:
                 filled=0,
                 remaining=amount,
                 cost=amount * propose_rate + trade.fee_open,
+                ft_order_tag=entry_tag,
             )
             order._trade_bt = trade
             trade.orders.append(order)
@@ -967,7 +973,8 @@ class Backtesting:
                     # Ignore trade if entry-order did not fill yet
                     continue
                 exit_row = data[pair][-1]
-                self._exit_trade(trade, exit_row, exit_row[OPEN_IDX], trade.amount)
+                self._exit_trade(trade, exit_row, exit_row[OPEN_IDX], trade.amount,
+                                 ExitType.FORCE_EXIT.value)
                 trade.orders[-1].close_bt_order(exit_row[DATE_IDX].to_pydatetime(), trade)
 
                 trade.close_date = exit_row[DATE_IDX].to_pydatetime()
