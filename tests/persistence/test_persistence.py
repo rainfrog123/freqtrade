@@ -1400,6 +1400,8 @@ def test_to_json(fee):
         'is_open': None,
         'open_date': trade.open_date.strftime(DATETIME_PRINT_FORMAT),
         'open_timestamp': int(trade.open_date.timestamp() * 1000),
+        'open_fill_date': None,
+        'open_fill_timestamp': None,
         'close_date': None,
         'close_timestamp': None,
         'open_rate': 0.123,
@@ -1486,6 +1488,8 @@ def test_to_json(fee):
         'quote_currency': 'BTC',
         'open_date': trade.open_date.strftime(DATETIME_PRINT_FORMAT),
         'open_timestamp': int(trade.open_date.timestamp() * 1000),
+        'open_fill_date': None,
+        'open_fill_timestamp': None,
         'close_date': trade.close_date.strftime(DATETIME_PRINT_FORMAT),
         'close_timestamp': int(trade.close_date.timestamp() * 1000),
         'open_rate': 0.123,
@@ -2095,6 +2099,7 @@ def test_Trade_object_idem():
         'get_mix_tag_performance',
         'get_trading_volume',
         'validate_string_len',
+        'custom_data'
     )
     EXCLUDES2 = ('trades', 'trades_open', 'bt_trades_open_pp', 'bt_open_open_trade_count',
                  'total_profit', 'from_json',)

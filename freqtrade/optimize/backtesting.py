@@ -34,8 +34,8 @@ from freqtrade.optimize.optimize_reports import (generate_backtest_stats, genera
                                                  show_backtest_results,
                                                  store_backtest_analysis_results,
                                                  store_backtest_stats)
-from freqtrade.persistence import (LocalTrade, Order, PairLocks, Trade, disable_database_use,
-                                   enable_database_use)
+from freqtrade.persistence import (CustomDataWrapper, LocalTrade, Order, PairLocks, Trade,
+                                   disable_database_use, enable_database_use)
 from freqtrade.plugins.pairlistmanager import PairListManager
 from freqtrade.plugins.protectionmanager import ProtectionManager
 from freqtrade.resolvers import ExchangeResolver, StrategyResolver
@@ -202,7 +202,7 @@ class Backtesting:
 
         self.prepare_backtest(False)
 
-        self.wallets = Wallets(self.config, self.exchange, log=False)
+        self.wallets = Wallets(self.config, self.exchange, is_backtest=True)
 
         self.progress = BTProgress()
         self.abort = False
@@ -338,6 +338,7 @@ class Backtesting:
         self.disable_database_use()
         PairLocks.reset_locks()
         Trade.reset_trades()
+        CustomDataWrapper.reset_custom_data()
         self.rejected_trades = 0
         self.timedout_entry_orders = 0
         self.timedout_exit_orders = 0
@@ -565,7 +566,8 @@ class Backtesting:
 
         if stake_amount is not None and stake_amount < 0.0:
             amount = amount_to_contract_precision(
-                abs(stake_amount * trade.leverage) / current_rate, trade.amount_precision,
+                abs(stake_amount * trade.amount / trade.stake_amount),
+                trade.amount_precision,
                 self.precision_mode, trade.contract_size)
             if amount == 0.0:
                 return trade
@@ -603,6 +605,11 @@ class Backtesting:
         if order and self._get_order_filled(order.ft_price, row):
             order.close_bt_order(current_date, trade)
             self._run_funding_fees(trade, current_date, force=True)
+            strategy_safe_wrapper(
+                self.strategy.order_filled,
+                default_retval=None)(
+                pair=trade.pair, trade=trade,  # type: ignore[arg-type]
+                order=order, current_time=current_date)
 
             if not (order.ft_order_side == trade.exit_side and order.safe_amount == trade.amount):
                 # trade is still open
@@ -882,6 +889,9 @@ class Backtesting:
             precision_amount = self.exchange.get_precision_amount(pair)
             amount = amount_to_contract_precision(amount_p, precision_amount, self.precision_mode,
                                                   contract_size)
+            if not amount:
+                # No amount left after truncating to precision.
+                return trade
             # Backcalculate actual stake amount.
             stake_amount = amount * propose_rate / leverage
 
@@ -1389,7 +1399,6 @@ class Backtesting:
     def start(self) -> None:
         """
         Run backtesting end-to-end
-        :return: None
         """
         data: Dict[str, Any] = {}
 

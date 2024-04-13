@@ -37,7 +37,6 @@ from freqtrade.rpc.rpc_types import (ProfitLossStr, RPCCancelMsg, RPCEntryMsg, R
                                      RPCExitMsg, RPCProtectionMsg)
 from freqtrade.strategy.interface import IStrategy
 from freqtrade.strategy.strategy_wrapper import strategy_safe_wrapper
-from freqtrade.util import FtPrecise
 from freqtrade.util.migrations import migrate_binance_futures_names
 from freqtrade.wallets import Wallets
 
@@ -82,7 +81,6 @@ class FreqtradeBot(LoggingMixin):
 
         PairLocks.timeframe = self.config['timeframe']
 
-        self.pairlists = PairListManager(self.exchange, self.config)
         self.trading_mode: TradingMode = self.config.get('trading_mode', TradingMode.SPOT)
         self.last_process: Optional[datetime] = None
 
@@ -129,8 +127,9 @@ class FreqtradeBot(LoggingMixin):
                 self.update_funding_fees()
                 self.wallets.update()
 
-            # TODO: This would be more efficient if scheduled in utc time, and performed at each
-            # TODO: funding interval, specified by funding_fee_times on the exchange classes
+            # This would be more efficient if scheduled in utc time, and performed at each
+            # funding interval, specified by funding_fee_times on the exchange classes
+            # However, this reduces the precision - and might therefore lead to problems.
             for time_slot in range(0, 24):
                 for minutes in [1, 31]:
                     t = str(time(time_slot, minutes, 2))
@@ -667,7 +666,7 @@ class FreqtradeBot(LoggingMixin):
             # We should decrease our position
             amount = self.exchange.amount_to_contract_precision(
                 trade.pair,
-                abs(float(FtPrecise(stake_amount * trade.leverage) / FtPrecise(current_exit_rate))))
+                abs(float(stake_amount * trade.amount / trade.stake_amount)))
 
             if amount == 0.0:
                 logger.info("Amount to exit is 0.0 due to exchange limits - not exiting.")
@@ -702,7 +701,7 @@ class FreqtradeBot(LoggingMixin):
         delta = f"Delta: {bids_ask_delta}"
 
         logger.info(
-            f"{bids}, {asks}, {delta}, Direction: {side.value}"
+            f"{bids}, {asks}, {delta}, Direction: {side.value} "
             f"Bid Price: {order_book['bids'][0][0]}, Ask Price: {order_book['asks'][0][0]}, "
             f"Immediate Bid Quantity: {order_book['bids'][0][1]}, "
             f"Immediate Ask Quantity: {order_book['asks'][0][1]}."
@@ -962,7 +961,7 @@ class FreqtradeBot(LoggingMixin):
         # edge-case for now.
         min_stake_amount = self.exchange.get_min_pair_stake_amount(
             pair, enter_limit_requested,
-            self.strategy.stoploss if not mode != 'pos_adjust' else 0.0,
+            self.strategy.stoploss if not mode == 'pos_adjust' else 0.0,
             leverage)
         max_stake_amount = self.exchange.get_max_pair_stake_amount(
             pair, enter_limit_requested, leverage)
@@ -987,7 +986,7 @@ class FreqtradeBot(LoggingMixin):
 
         return enter_limit_requested, stake_amount, leverage
 
-    def _notify_enter(self, trade: Trade, order: Order, order_type: str,
+    def _notify_enter(self, trade: Trade, order: Order, order_type: Optional[str],
                       fill: bool = False, sub_trade: bool = False) -> None:
         """
         Sends rpc notification when a entry order occurred.
@@ -1011,7 +1010,7 @@ class FreqtradeBot(LoggingMixin):
             'direction': 'Short' if trade.is_short else 'Long',
             'limit': open_rate,  # Deprecated (?)
             'open_rate': open_rate,
-            'order_type': order_type,
+            'order_type': order_type or 'unknown',
             'stake_amount': trade.stake_amount,
             'stake_currency': self.config['stake_currency'],
             'base_currency': self.exchange.get_pair_base_currency(trade.pair),
@@ -1776,7 +1775,7 @@ class FreqtradeBot(LoggingMixin):
 
         return True
 
-    def _notify_exit(self, trade: Trade, order_type: str, fill: bool = False,
+    def _notify_exit(self, trade: Trade, order_type: Optional[str], fill: bool = False,
                      sub_trade: bool = False, order: Optional[Order] = None) -> None:
         """
         Sends rpc notification when a sell occurred.
@@ -1808,7 +1807,7 @@ class FreqtradeBot(LoggingMixin):
             'gain': gain,
             'limit': order_rate,  # Deprecated
             'order_rate': order_rate,
-            'order_type': order_type,
+            'order_type': order_type or 'unknown',
             'amount': amount,
             'open_rate': trade.open_rate,
             'close_rate': order_rate,
@@ -1945,6 +1944,9 @@ class FreqtradeBot(LoggingMixin):
 
     def _update_trade_after_fill(self, trade: Trade, order: Order) -> Trade:
         if order.status in constants.NON_OPEN_EXCHANGE_STATES:
+            strategy_safe_wrapper(
+                self.strategy.order_filled, default_retval=None)(
+                pair=trade.pair, trade=trade, order=order, current_time=datetime.now(timezone.utc))
             # If a entry order was closed, force update on stoploss on exchange
             if order.ft_order_side == trade.entry_side:
                 trade = self.cancel_stoploss_on_exchange(trade)
