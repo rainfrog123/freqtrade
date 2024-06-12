@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Literal, Tuple, Union
 
 import numpy as np
 from pandas import DataFrame, Series, concat, to_datetime
@@ -141,7 +141,10 @@ def generate_pair_metrics(
 
 
 def generate_tag_metrics(
-    tag_type: str, starting_balance: int, results: DataFrame, skip_nan: bool = False
+    tag_type: Literal["enter_tag", "exit_reason"],
+    starting_balance: int,
+    results: DataFrame,
+    skip_nan: bool = False,
 ) -> List[Dict]:
     """
     Generates and returns a list of metrics for the given tag trades and the results dataframe
@@ -154,12 +157,11 @@ def generate_tag_metrics(
     tabular_data = []
 
     if tag_type in results.columns:
-        for tag, count in results[tag_type].value_counts().items():
-            result = results[results[tag_type] == tag]
-            if skip_nan and result["profit_abs"].isnull().all():
+        for tags, group in results.groupby(tag_type):
+            if skip_nan and group["profit_abs"].isnull().all():
                 continue
 
-            tabular_data.append(_generate_result_line(result, starting_balance, tag))
+            tabular_data.append(_generate_result_line(group, starting_balance, tags))
 
         # Sort by total profit %:
         tabular_data = sorted(tabular_data, key=lambda k: k["profit_total_abs"], reverse=True)
@@ -497,7 +499,6 @@ def generate_strategy_stats(
     }
 
     try:
-        max_drawdown_legacy = calculate_max_drawdown(results, value_col="profit_ratio")
         drawdown = calculate_max_drawdown(
             results, value_col="profit_abs", starting_balance=start_balance
         )
@@ -508,7 +509,6 @@ def generate_strategy_stats(
 
         strat_stats.update(
             {
-                "max_drawdown": max_drawdown_legacy.drawdown_abs,  # Deprecated - do not use
                 "max_drawdown_account": drawdown.relative_account_drawdown,
                 "max_relative_drawdown": underwater.relative_account_drawdown,
                 "max_drawdown_abs": drawdown.drawdown_abs,
@@ -527,7 +527,6 @@ def generate_strategy_stats(
     except ValueError:
         strat_stats.update(
             {
-                "max_drawdown": 0.0,
                 "max_drawdown_account": 0.0,
                 "max_relative_drawdown": 0.0,
                 "max_drawdown_abs": 0.0,
