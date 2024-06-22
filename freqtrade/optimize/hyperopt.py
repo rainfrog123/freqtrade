@@ -124,7 +124,7 @@ class Hyperopt:
         )
         self.total_epochs = config.get("epochs", 0)
 
-        self.current_best_loss = 100
+        self.current_best_loss = 100000
 
         self.clean_hyperopt()
 

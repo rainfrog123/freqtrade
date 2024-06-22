@@ -31,37 +31,36 @@ def main(sysargv: Optional[List[str]] = None) -> None:
     :return: None
     """
     # debug_input = input('Debug mode? (y/n): ')
-    debug_input = 0
+    debug_input = 1
     if debug_input == 1:
         try:
             import os
             working_directory = '/allah/freqtrade'
             os.chdir(working_directory)
-            print('Welcome to Freqtrade! This is the Machine learning branch.')
+            # print('Welcome to Freqtrade! This is the Machine learning branch.')
 
-            # config = [
-            #     'backtesting',
-            #     '-c', 'config.json',
-            #     '--timerange', '20231111-',
-            #     '--timeframe', '1m',
-            #     '--strategy', 'LuxAlgoTEMA20Strategy',
-            #     '--starting-balance', '1000',
-            #     '--cache', 'none',
-            #     '--eps'
+            # config1 = [
+            #      "hyperopt",
+            #     "--strategy", "ChangePointTrendStrategy",
+            #     "--hyperopt-loss", "SharpeHyperOptLoss",
+            #     "--spaces", "stoploss",
+            #     "-e", "10",
+            #     "--timerange", "20240610-",
+            #     "-c", "config.json",
+            #     "--disable-param-export",
+            #     "--starting-balance", "10000"
             # ]
-            config = [
-                    "hyperopt",
-                    "--hyperopt-loss", "SharpeHyperOptLossDaily",
-                    "--spaces", "stoploss",
-                    "--strategy", "LuxAlgoTEMA20Strategy_follow",
-                    "-c", "config.json",
-                    "-e", "100",
-                    "--timerange", "20231201-",
-                    "--timeframe", "1m"
-                ]
+            # config2 = [
+            #     "backtesting",
+            #     "--strategy", "ChangePointTrendStrategy",
+            #     "--timerange", "20240610-",
+            #     "--timeframe", "15m",
+            #     "--starting-balance", "10000",
+            #     "--cache", "none",
+            #     "-c", "config.json"
+            # ]
 
-
-            sysargv = config
+            # sysargv = config2
 
         except Exception as e:
             print(e)
