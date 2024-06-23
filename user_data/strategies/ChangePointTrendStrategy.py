@@ -4,7 +4,7 @@ from pandas import DataFrame
 
 import talib.abstract as ta
 
-from freqtrade.strategy import IStrategy
+from freqtrade.strategy import IStrategy, IntParameter
 from freqtrade.optimize.space import SKDecimal
 
 class ChangePointTrendStrategy(IStrategy):
@@ -12,9 +12,14 @@ class ChangePointTrendStrategy(IStrategy):
     timeframe = '15m'
     can_short: bool = True
     minimal_roi = {"60": 10000}
-    stoploss = -0.007
+    stoploss = -0.012
     trailing_stop = True
     startup_candle_count: int = 30
+
+    threshold_1 = IntParameter(1, 10, default=4, space='buy')
+    threshold_2 = IntParameter(1, 10, default=4, space='buy')
+    threshold_3 = IntParameter(1, 10, default=8, space='buy')
+    threshold_4 = IntParameter(1, 10, default=3, space='buy')
 
     def informative_pairs(self):
         """Define pairs for additional data. Currently none used."""
@@ -41,16 +46,13 @@ class ChangePointTrendStrategy(IStrategy):
         dataframe['last_trend_durations'] = np.where(
             dataframe['trend_change_point'], dataframe['last_trend_durations'], None
         )
-        threshold_1 = 5
-        threshold_2 = 5
-        threshold_3 = 5
-        threshold_4 = 5
 
         dataframe['state'] = np.where(
-            (dataframe['trend_duration'] <= 5) & (dataframe['last_trend_durations'] <= 5),
+            (dataframe['trend_duration'] <= self.threshold_1.value) & (dataframe['last_trend_durations'] <= self.threshold_2.value),
             'locked',
             np.where(
-                (dataframe['trend_duration'] >= 5) & (dataframe['last_trend_durations'] >= 5),
+                # (dataframe['trend_duration'] > self.threshold_3.value) & (dataframe['last_trend_durations'] >= self.threshold_4.value),
+                (dataframe['trend_duration'] > self.threshold_3.value) ,
                 'unlocked',
                 'inherit'
             )
@@ -80,6 +82,6 @@ class ChangePointTrendStrategy(IStrategy):
     class HyperOpt:
         @staticmethod
         def stoploss_space():
-            return [SKDecimal(-0.015, -0.001, decimals=4, name='stoploss')]
+            return [SKDecimal(-0.015, -0.001, decimals=3, name='stoploss')]
 
         # Define custom ROI space if needed
