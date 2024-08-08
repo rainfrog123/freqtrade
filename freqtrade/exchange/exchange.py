@@ -128,6 +128,7 @@ class Exchange:
         # Check https://github.com/ccxt/ccxt/issues/10767 for removal of ohlcv_volume_currency
         "ohlcv_volume_currency": "base",  # "base" or "quote"
         "tickers_have_quoteVolume": True,
+        "tickers_have_percentage": True,
         "tickers_have_bid_ask": True,  # bid / ask empty for fetch_tickers
         "tickers_have_price": True,
         "trades_limit": 1000,  # Limit for 1 call to fetch_trades
@@ -352,14 +353,18 @@ class Exchange:
             raise OperationalException(f"Exchange {name} is not supported by ccxt")
 
         ex_config = {
-            "apiKey": exchange_config.get("apiKey", exchange_config.get("key")),
+            "apiKey": exchange_config.get(
+                "api_key", exchange_config.get("apiKey", exchange_config.get("key"))
+            ),
             "secret": exchange_config.get("secret"),
             "password": exchange_config.get("password"),
             "uid": exchange_config.get("uid", ""),
-            "accountId": exchange_config.get("accountId", ""),
+            "accountId": exchange_config.get("account_id", exchange_config.get("accountId", "")),
             # DEX attributes:
-            "walletAddress": exchange_config.get("walletAddress"),
-            "privateKey": exchange_config.get("privateKey"),
+            "walletAddress": exchange_config.get(
+                "wallet_address", exchange_config.get("walletAddress")
+            ),
+            "privateKey": exchange_config.get("private_key", exchange_config.get("privateKey")),
         }
         if ccxt_kwargs:
             logger.info("Applying additional ccxt config: %s", ccxt_kwargs)
@@ -2607,12 +2612,13 @@ class Exchange:
         except (ccxt.OperationFailed, ccxt.ExchangeError) as e:
             raise TemporaryError(
                 f"Could not fetch historical candle (OHLCV) data "
-                f"for pair {pair} due to {e.__class__.__name__}. "
+                f"for {pair}, {timeframe}, {candle_type} due to {e.__class__.__name__}. "
                 f"Message: {e}"
             ) from e
         except ccxt.BaseError as e:
             raise OperationalException(
-                f"Could not fetch historical candle (OHLCV) data for pair {pair}. Message: {e}"
+                f"Could not fetch historical candle (OHLCV) data for "
+                f"{pair}, {timeframe}, {candle_type}. Message: {e}"
             ) from e
 
     async def _fetch_funding_rate_history(
