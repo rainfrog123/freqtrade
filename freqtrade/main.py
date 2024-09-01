@@ -38,30 +38,18 @@ def main(sysargv: Optional[List[str]] = None) -> None:
             import os
             working_directory = '/allah/freqtrade'
             os.chdir(working_directory)
-            # print('Welcome to Freqtrade! This is the Machine learning branch.')
+            config_1 = [
+                "backtesting",
+                "--strategy", "LongReversalStrategy",
+                "--strategy-path", "/allah/stuff/freq/strategy/long_reverse_strat",
+                "-c", "/allah/stuff/freq/config.json",
+                "--timerange", "20240825-",
+                "--timeframe", "3m",
+                "--starting-balance", "10000",
+                "--cache", "none",
+            ]
 
-            # config1 = [
-            #      "hyperopt",
-            #     "--strategy", "ChangePointTrendStrategy",
-            #     "--hyperopt-loss", "SharpeHyperOptLoss",
-            #     "--spaces", "stoploss",
-            #     "-e", "10",
-            #     "--timerange", "20240610-",
-            #     "-c", "config.json",
-            #     "--disable-param-export",
-            #     "--starting-balance", "10000"
-            # ]
-            # config2 = [
-            #     "backtesting",
-            #     "--strategy", "ChangePointTrendStrategy",
-            #     "--timerange", "20240610-",
-            #     "--timeframe", "15m",
-            #     "--starting-balance", "10000",
-            #     "--cache", "none",
-            #     "-c", "config.json"
-            # ]
-
-            # sysargv = config2
+            sysargv = config_1
 
         except Exception as e:
             print(e)

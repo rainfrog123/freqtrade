@@ -1463,43 +1463,43 @@ class Backtesting:
                 # or when we got the signal for a new trade.
                 exit_candle_end = current_detail_time + self.timeframe_td
 
-                    detail_data = self.detail_data[pair]
-                    detail_data = detail_data.loc[
-                        (detail_data["date"] >= current_detail_time)
-                        & (detail_data["date"] < exit_candle_end)
-                    ].copy()
-                    if len(detail_data) == 0:
-                        # Fall back to "regular" data if no detail data was found for this candle
-                        open_trade_count_start = self.backtest_loop(
-                            row, pair, current_time, end_date, open_trade_count_start, trade_dir
-                        )
-                        continue
-                    detail_data.loc[:, "enter_long"] = row[LONG_IDX]
-                    detail_data.loc[:, "exit_long"] = row[ELONG_IDX]
-                    detail_data.loc[:, "enter_short"] = row[SHORT_IDX]
-                    detail_data.loc[:, "exit_short"] = row[ESHORT_IDX]
-                    detail_data.loc[:, "enter_tag"] = row[ENTER_TAG_IDX]
-                    detail_data.loc[:, "exit_tag"] = row[EXIT_TAG_IDX]
-                    is_first = True
-                    current_time_det = current_time
-                    for det_row in detail_data[HEADERS].values.tolist():
-                        self.dataprovider._set_dataframe_max_date(current_time_det)
-                        open_trade_count_start = self.backtest_loop(
-                            det_row,
-                            pair,
-                            current_time_det,
-                            end_date,
-                            open_trade_count_start,
-                            trade_dir,
-                            is_first,
-                        )
-                        current_time_det += self.timeframe_detail_td
-                        is_first = False
-                else:
-                    self.dataprovider._set_dataframe_max_date(current_time)
-                    open_trade_count_start = self.backtest_loop(
-                        row, pair, current_time, end_date, open_trade_count_start, trade_dir
-                    )
+                detail_data = self.detail_data[pair]
+                detail_data = detail_data.loc[
+                    (detail_data["date"] >= current_detail_time)
+                & (detail_data["date"] < exit_candle_end)
+            ].copy()
+            if len(detail_data) == 0:
+                # Fall back to "regular" data if no detail data was found for this candle
+                open_trade_count_start = self.backtest_loop(
+                    row, pair, current_time, end_date, open_trade_count_start, trade_dir
+                )
+                continue
+            detail_data.loc[:, "enter_long"] = row[LONG_IDX]
+            detail_data.loc[:, "exit_long"] = row[ELONG_IDX]
+            detail_data.loc[:, "enter_short"] = row[SHORT_IDX]
+            detail_data.loc[:, "exit_short"] = row[ESHORT_IDX]
+            detail_data.loc[:, "enter_tag"] = row[ENTER_TAG_IDX]
+            detail_data.loc[:, "exit_tag"] = row[EXIT_TAG_IDX]
+            is_first = True
+            current_time_det = current_time
+            for det_row in detail_data[HEADERS].values.tolist():
+                self.dataprovider._set_dataframe_max_date(current_time_det)
+                open_trade_count_start = self.backtest_loop(
+                    det_row,
+                    pair,
+                    current_time_det,
+                    end_date,
+                    open_trade_count_start,
+                    trade_dir,
+                    is_first,
+                )
+                current_time_det += self.timeframe_detail_td
+                is_first = False
+        else:
+            self.dataprovider._set_dataframe_max_date(current_time)
+            open_trade_count_start = self.backtest_loop(
+                row, pair, current_time, end_date, open_trade_count_start, trade_dir
+            )
 
             # Move time one configured time_interval ahead.
             self.progress.increment()
