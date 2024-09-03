@@ -1,5 +1,5 @@
 # pragma pylint: disable=missing-docstring, W0212, too-many-arguments
-# flake8: noqa
+
 """
 This module contains the backtesting logic
 """
@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from numpy import nan
 from pandas import DataFrame
-from pyexpat import features
 
 from freqtrade import constants
 from freqtrade.configuration import TimeRange, validate_config_consistency
@@ -1466,44 +1465,35 @@ class Backtesting:
                 detail_data = self.detail_data[pair]
                 detail_data = detail_data.loc[
                     (detail_data["date"] >= current_detail_time)
-                & (detail_data["date"] < exit_candle_end)
-            ].copy()
-            if len(detail_data) == 0:
-                # Fall back to "regular" data if no detail data was found for this candle
-                open_trade_count_start = self.backtest_loop(
-                    row, pair, current_time, end_date, open_trade_count_start, trade_dir
-                )
-                continue
-            detail_data.loc[:, "enter_long"] = row[LONG_IDX]
-            detail_data.loc[:, "exit_long"] = row[ELONG_IDX]
-            detail_data.loc[:, "enter_short"] = row[SHORT_IDX]
-            detail_data.loc[:, "exit_short"] = row[ESHORT_IDX]
-            detail_data.loc[:, "enter_tag"] = row[ENTER_TAG_IDX]
-            detail_data.loc[:, "exit_tag"] = row[EXIT_TAG_IDX]
-            is_first = True
-            current_time_det = current_time
-            for det_row in detail_data[HEADERS].values.tolist():
-                self.dataprovider._set_dataframe_max_date(current_time_det)
-                open_trade_count_start = self.backtest_loop(
-                    det_row,
-                    pair,
-                    current_time_det,
-                    end_date,
-                    open_trade_count_start,
-                    trade_dir,
-                    is_first,
-                )
-                current_time_det += self.timeframe_detail_td
-                is_first = False
-        else:
-            self.dataprovider._set_dataframe_max_date(current_time)
-            open_trade_count_start = self.backtest_loop(
-                row, pair, current_time, end_date, open_trade_count_start, trade_dir
-            )
-
-            # Move time one configured time_interval ahead.
-            self.progress.increment()
-            current_time += self.timeframe_td
+                    & (detail_data["date"] < exit_candle_end)
+                ].copy()
+                if len(detail_data) == 0:
+                    # Fall back to "regular" data if no detail data was found for this candle
+                    self.backtest_loop(row, pair, current_time, end_date, trade_dir)
+                    continue
+                detail_data.loc[:, "enter_long"] = row[LONG_IDX]
+                detail_data.loc[:, "exit_long"] = row[ELONG_IDX]
+                detail_data.loc[:, "enter_short"] = row[SHORT_IDX]
+                detail_data.loc[:, "exit_short"] = row[ESHORT_IDX]
+                detail_data.loc[:, "enter_tag"] = row[ENTER_TAG_IDX]
+                detail_data.loc[:, "exit_tag"] = row[EXIT_TAG_IDX]
+                is_first = True
+                current_time_det = current_time
+                for det_row in detail_data[HEADERS].values.tolist():
+                    self.dataprovider._set_dataframe_max_date(current_time_det)
+                    self.backtest_loop(
+                        det_row,
+                        pair,
+                        current_time_det,
+                        end_date,
+                        trade_dir,
+                        is_first,
+                    )
+                    current_time_det += self.timeframe_detail_td
+                    is_first = False
+            else:
+                self.dataprovider._set_dataframe_max_date(current_time)
+                self.backtest_loop(row, pair, current_time, end_date, trade_dir)
 
         self.handle_left_open(LocalTrade.bt_trades_open_pp, data=data)
         self.wallets.update()
@@ -1539,6 +1529,7 @@ class Backtesting:
 
         # need to reprocess data every time to populate signals
         preprocessed = self.strategy.advise_all_indicators(data)
+
         # Trim startup period from analyzed dataframe
         # This only used to determine if trimming would result in an empty dataframe
         preprocessed_tmp = trim_dataframes(preprocessed, timerange, self.required_startup)
@@ -1674,6 +1665,10 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
+
+        # if len(self.strategylist) > 0:
+        #     # Show backtest results
+        #     show_backtest_results(self.config, self.results)
             # import os, json
             # class TradeDataProcessor:
 
