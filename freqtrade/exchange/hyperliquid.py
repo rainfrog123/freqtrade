@@ -1,11 +1,10 @@
 """Hyperliquid exchange subclass"""
 
 import logging
-from typing import Dict
 
-from ccxt import SIGNIFICANT_DIGITS
-
+from freqtrade.enums import TradingMode
 from freqtrade.exchange import Exchange
+from freqtrade.exchange.exchange_types import FtHas
 
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ class Hyperliquid(Exchange):
     Contains adjustments needed for Freqtrade to work with this exchange.
     """
 
-    _ft_has: Dict = {
+    _ft_has: FtHas = {
         # Only the most recent 5000 candles are available according to the
         # exchange's API documentation.
         "ohlcv_has_history": False,
@@ -26,8 +25,11 @@ class Hyperliquid(Exchange):
     }
 
     @property
-    def precision_mode_price(self) -> int:
-        """
-        Override the default precision mode for price.
-        """
-        return SIGNIFICANT_DIGITS
+    def _ccxt_config(self) -> dict:
+        # Parameters to add directly to ccxt sync/async initialization.
+        # ccxt defaults to swap mode.
+        config = {}
+        if self.trading_mode == TradingMode.SPOT:
+            config.update({"options": {"defaultType": "spot"}})
+        config.update(super()._ccxt_config)
+        return config
