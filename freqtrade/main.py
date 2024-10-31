@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# # flake8: noqa
 """
 Main Freqtrade bot script.
 Read the documentation to know what cli arguments you need.
@@ -8,7 +7,6 @@ Read the documentation to know what cli arguments you need.
 import logging
 import sys
 from typing import Any, Optional
-
 
 # check min. python version
 if sys.version_info < (3, 10):  # pragma: no cover
@@ -21,7 +19,6 @@ from freqtrade.exceptions import ConfigurationError, FreqtradeException, Operati
 from freqtrade.loggers import setup_logging_pre
 from freqtrade.system import asyncio_setup, gc_set_threshold
 
-
 logger = logging.getLogger("freqtrade")
 
 
@@ -30,13 +27,16 @@ def main(sysargv: Optional[list[str]] = None) -> None:
     This function will initiate the bot and start the trading loop.
     :return: None
     """
-    # debug_input = input('Debug mode? (y/n): ')
+
+    # Initialize debug mode (set to 1 to enable, 0 to disable)
     debug_input = 1
     if debug_input == 1:
         try:
             import os
             working_directory = '/allah/freqtrade'
             os.chdir(working_directory)
+            
+            # Define debug-specific arguments for backtesting
             config_1 = [
                 "backtesting",
                 "--strategy", "LongReversalStrategy",
@@ -47,17 +47,12 @@ def main(sysargv: Optional[list[str]] = None) -> None:
                 "--starting-balance", "10000",
                 "--cache", "none",
             ]
-
             sysargv = config_1
 
         except Exception as e:
-            print(e)
-    else:
-        pass
-
+            print(f"Error in debug mode setup: {e}")
 
     return_code: Any = 1
-
     try:
         setup_logging_pre()
         asyncio_setup()
