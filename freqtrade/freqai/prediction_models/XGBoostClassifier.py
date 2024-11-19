@@ -46,18 +46,37 @@ class XGBoostClassifier(BaseClassifierModel):
         else:
             test_features = data_dictionary["test_features"].to_numpy()
             test_labels = data_dictionary["test_labels"].to_numpy()[:, 0]
-
+            
             if not is_integer_dtype(test_labels):
                 test_labels = pd.Series(le.transform(test_labels), dtype="int64")
 
-            eval_set = [(test_features, test_labels)]
+            eval_set = [(X, y), (test_features, test_labels)]
+            # eval_set = [(test_features, test_labels), (X, y)]
 
         train_weights = data_dictionary["train_weights"]
 
         init_model = self.get_init_model(dk.pair)
 
-        model = XGBClassifier(**self.model_training_parameters)
+        # model = XGBClassifier(**self.model_training_parameters)
+        model = XGBClassifier(
+                    objective="binary:logistic",  # For binary classification problems
+                    max_depth=5,                 # Maximum depth of the trees
+                    learning_rate=0.1,           # Step size shrinkage
+                    n_estimators=100,            # Number of boosting rounds
+                    subsample=0.8,               # Fraction of training data used per tree
+                    colsample_bytree=0.8,        # Fraction of features used per tree
+                    reg_alpha=1.0,               # L1 regularization term
+                    reg_lambda=1.0,              # L2 regularization term
+                    random_state=42,             # Seed for reproducibility
+                    eval_metric="logloss",       # Metric to evaluate during training
+                    use_label_encoder=False      # Disables internal label encoding (avoids warnings)
+                )
 
+        from freqtrade.freqai.tensorboard import TBCallback
+        from pathlib import Path
+        
+        model.set_params(callbacks=[TBCallback(Path(dk.data_path).parent)])
+        model.set_params(eval_metric=["map", "logloss", 'error', 'auc'])
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
         return model
@@ -86,3 +105,9 @@ class XGBoostClassifier(BaseClassifierModel):
         )
 
         return (pred_df, dk.do_predict)
+
+
+
+
+
+

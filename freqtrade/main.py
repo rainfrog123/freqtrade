@@ -39,14 +39,14 @@ def main(sysargv: Optional[list[str]] = None) -> None:
             # Define debug-specific arguments for backtesting
             config_1 = [
                 "backtesting",
-                "--strategy", "LongReversalStrategy",
-                "--strategy-path", "/allah/stuff/freq/strategy/long_reverse_strat",
-                "-c", "/allah/stuff/freq/config.json",
-                "--timerange", "20240825-",
-                "--timeframe", "3m",
-                "--starting-balance", "10000",
-                "--cache", "none",
+                "--strategy", "freqai_opaq_classifier",
+                "--userdir", "/allah/stuff/freq/userdir",
+                "--config", "/allah/stuff/freq/userdir/config_freqai.json",
+                "--freqaimodel", "XGBoostClassifier",
+                "--timerange", "20241001-20241030",
+                "--datadir", "/allah/freqtrade/user_data/data/binance",
             ]
+
             sysargv = config_1
 
         except Exception as e:
