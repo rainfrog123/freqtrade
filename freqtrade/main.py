@@ -21,6 +21,33 @@ from freqtrade.system import asyncio_setup, gc_set_threshold
 
 logger = logging.getLogger("freqtrade")
 
+import re
+def update_identifier_directly(config_path: str):
+    try:
+        # Read the file as text
+        with open(config_path, 'r') as file:
+            content = file.read()
+        
+        # Use regex to find and update the identifier value
+        match = re.search(r'"identifier":\s*"unique-id-(\d+)"', content)
+        if match:
+            current_id = int(match.group(1))  # Extract the current ID
+            new_id = current_id + 1          # Increment the ID
+            new_identifier = f'"identifier": "unique-id-{new_id}"'
+            
+            # Replace the old identifier with the new one
+            updated_content = re.sub(r'"identifier":\s*"unique-id-\d+"', new_identifier, content)
+            
+            # Write the updated content back to the file
+            with open(config_path, 'w') as file:
+                file.write(updated_content)
+            
+            print(f"Updated identifier to unique-id-{new_id}")
+        else:
+            print("Identifier not found in the configuration file.")
+    except Exception as e:
+        print(f"Error updating identifier: {e}")
+
 
 def main(sysargv: list[str] | None = None) -> None:
     """
@@ -29,6 +56,7 @@ def main(sysargv: list[str] | None = None) -> None:
     """
 
     # Initialize debug mode (set to 1 to enable, 0 to disable)
+    update_identifier_directly("/allah/stuff/freq/userdir/config_freqai.json")
     debug_input = 1
     if debug_input == 1:
         try:
@@ -42,7 +70,8 @@ def main(sysargv: list[str] | None = None) -> None:
                 "--strategy", "freqai_opaq_classifier",
                 "--userdir", "/allah/stuff/freq/userdir",
                 "--config", "/allah/stuff/freq/userdir/config_freqai.json",
-                "--freqaimodel", "XGBoostClassifier",
+                # "--freqaimodel", "PyTorchMLPRegressor",
+                "--freqaimodel", "PyTorchMLPClassifier",
                 "--timerange", "20241001-20241030",
                 "--datadir", "/allah/freqtrade/user_data/data/binance",
             ]

@@ -57,6 +57,39 @@ class XGBoostClassifier(BaseClassifierModel):
 
         init_model = self.get_init_model(dk.pair)
 
+        from sklearn.model_selection import GridSearchCV
+        param_grid = {
+            "max_depth": [3, 5, 7],                 # Maximum depth of the trees
+            "learning_rate": [0.01, 0.1, 0.2],     # Learning rate
+            "n_estimators": [50, 100, 200],        # Number of boosting rounds
+            "subsample": [0.6, 0.8, 1.0],          # Fraction of samples used per tree
+            "colsample_bytree": [0.6, 0.8, 1.0],   # Fraction of features used per tree
+            "reg_alpha": [0, 0.1, 1.0],            # L1 regularization term
+            "reg_lambda": [0.1, 1.0, 10.0],        # L2 regularization term
+        }
+
+        base_model = XGBClassifier(
+            objective="binary:logistic",  # For binary classification
+            use_label_encoder=False,
+            eval_metric="logloss",
+            random_state=42
+        )
+
+        grid_search = GridSearchCV(
+            estimator=base_model,
+            param_grid=param_grid,
+            scoring="accuracy",  # Optimize for accuracy
+            cv=3,  # 3-fold cross-validation
+            verbose=1,
+            n_jobs=-1  # Use all available CPU cores
+        )
+        
+        # Perform grid search
+        print("Starting Grid Search...")
+        grid_search.fit(X, y, sample_weight=train_weights)
+        print(f"Best parameters found: {grid_search.best_params_}")
+        print(f"Best cross-validated score: {grid_search.best_score_}")
+
         # model = XGBClassifier(**self.model_training_parameters)
         model = XGBClassifier(
                     objective="binary:logistic",  # For binary classification problems
