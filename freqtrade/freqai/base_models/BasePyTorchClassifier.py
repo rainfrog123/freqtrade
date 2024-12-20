@@ -178,6 +178,16 @@ class BasePyTorchClassifier(BasePyTorchModel):
             training_filter=True,
         )
 
+        # Save the dataframes to Parquet files
+        import os
+
+        directory_path = "/allah/data/parquet"
+        features_file_path = os.path.join(directory_path, "features_filtered.parquet")
+        labels_file_path = os.path.join(directory_path, "labels_filtered.parquet")
+        # features_filtered.to_parquet(features_file_path)
+        # labels_filtered.to_parquet(labels_file_path)
+        # print("Dataframes exported to Parquet successfully.")
+
         # split data into train/test data.
         dd = dk.make_train_test_datasets(features_filtered, labels_filtered)
         if not self.freqai_info.get("fit_live_predictions_candles", 0) or not self.live:
@@ -202,6 +212,15 @@ class BasePyTorchClassifier(BasePyTorchModel):
             f"Training model on {len(dk.data_dictionary['train_features'].columns)} features"
         )
         logger.info(f"Training model on {len(dd['train_features'])} data points")
+
+        train_features = dd["train_features"]
+        train_labels = dd["train_labels"]
+
+        # Assuming train_features and train_labels are pandas DataFrames
+        train_features.to_parquet(features_file_path)
+        train_labels.to_parquet(labels_file_path)
+
+        print("Train features and labels exported to Parquet successfully.")
 
         model = self.fit(dd, dk)
         end_time = time()

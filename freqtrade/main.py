@@ -8,6 +8,7 @@ import logging
 import sys
 from typing import Any
 
+
 # check min. python version
 if sys.version_info < (3, 10):  # pragma: no cover  # noqa: UP036
     sys.exit("Freqtrade requires Python version >= 3.10")
@@ -19,29 +20,32 @@ from freqtrade.exceptions import ConfigurationError, FreqtradeException, Operati
 from freqtrade.loggers import setup_logging_pre
 from freqtrade.system import asyncio_setup, gc_set_threshold
 
+
 logger = logging.getLogger("freqtrade")
 
 import re
+
+
 def update_identifier_directly(config_path: str):
     try:
         # Read the file as text
-        with open(config_path, 'r') as file:
+        with open(config_path, "r") as file:
             content = file.read()
-        
+
         # Use regex to find and update the identifier value
         match = re.search(r'"identifier":\s*"unique-id-(\d+)"', content)
         if match:
             current_id = int(match.group(1))  # Extract the current ID
-            new_id = current_id + 1          # Increment the ID
+            new_id = current_id + 1  # Increment the ID
             new_identifier = f'"identifier": "unique-id-{new_id}"'
-            
+
             # Replace the old identifier with the new one
             updated_content = re.sub(r'"identifier":\s*"unique-id-\d+"', new_identifier, content)
-            
+
             # Write the updated content back to the file
-            with open(config_path, 'w') as file:
+            with open(config_path, "w") as file:
                 file.write(updated_content)
-            
+
             print(f"Updated identifier to unique-id-{new_id}")
         else:
             print("Identifier not found in the configuration file.")
@@ -61,20 +65,37 @@ def main(sysargv: list[str] | None = None) -> None:
     if debug_input == 1:
         try:
             import os
-            working_directory = '/allah/freqtrade'
+
+            working_directory = "/allah/freqtrade"
             os.chdir(working_directory)
-            
-            # Define debug-specific arguments for backtesting
+
             config_1 = [
                 "backtesting",
-                "--strategy", "freqai_opaq_classifier",
-                "--userdir", "/allah/stuff/freq/userdir",
-                "--config", "/allah/stuff/freq/userdir/config_freqai.json",
-                # "--freqaimodel", "PyTorchMLPRegressor",
-                "--freqaimodel", "PyTorchMLPClassifier",
-                "--timerange", "20241001-20241030",
-                "--datadir", "/allah/freqtrade/user_data/data/binance",
+                "--strategy",
+                "FreqAIDynamicClassifierStrategy",
+                "--userdir",
+                "/allah/stuff/freq/userdir",
+                "--config",
+                "/allah/stuff/freq/userdir/config_freqai.json",
+                "--freqaimodel",
+                "PyTorchMLPClassifier",
+                "--timerange",
+                "20241001-20241002",
+                "--datadir",
+                "/allah/freqtrade/user_data/data/binance",
             ]
+
+            # config_1 = [
+            #         "backtesting",
+            #         "--strategy", "TEMA50TrailingStopStrategy",
+            #         "--userdir", "/allah/stuff/freq/userdir",
+            #         "--config", "/allah/stuff/freq/userdir/config.json",
+            #         "--timerange", "20241101-20241102",
+            #         "--datadir", "/allah/freqtrade/user_data/data/binance",
+            #         "--cache", "none",
+            #         "--starting-balance", "10000",
+            #         "--eps"
+            #     ]
 
             sysargv = config_1
 
