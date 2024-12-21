@@ -72,17 +72,19 @@ def main(sysargv: list[str] | None = None) -> None:
             config_1 = [
                 "backtesting",
                 "--strategy",
-                "FreqAIDynamicClassifierStrategy",
+                "MultiTimeframeTEMAAgreement",
                 "--userdir",
-                "/allah/stuff/freq/userdir",
+                "/allah/stuff/freq/userdir/",
                 "--config",
-                "/allah/stuff/freq/userdir/config_freqai.json",
-                "--freqaimodel",
-                "PyTorchMLPClassifier",
+                "/allah/stuff/freq/userdir/mutiple_coins_example.json",
                 "--timerange",
-                "20241001-20241002",
+                "20241219-20241220",
                 "--datadir",
                 "/allah/freqtrade/user_data/data/binance",
+                "--cache",
+                "none",
+                "--starting-balance",
+                "1000",
             ]
 
             # config_1 = [
