@@ -61,7 +61,7 @@ def main(sysargv: list[str] | None = None) -> None:
 
     # Initialize debug mode (set to 1 to enable, 0 to disable)
     update_identifier_directly("/allah/stuff/freq/userdir/config_freqai.json")
-    debug_input = 1
+    debug_input = 0
     if debug_input == 1:
         try:
             import os
@@ -72,19 +72,21 @@ def main(sysargv: list[str] | None = None) -> None:
             config_1 = [
                 "backtesting",
                 "--strategy",
-                "MultiTimeframeTEMAAgreement",
+                "FreqAIDynamicClassifierStrategy",
                 "--userdir",
                 "/allah/stuff/freq/userdir/",
                 "--config",
-                "/allah/stuff/freq/userdir/mutiple_coins_example.json",
+                "/allah/stuff/freq/userdir/config_freqai.json",
                 "--timerange",
-                "20241219-20241220",
+                "20240624-20241224",
+                "--freqaimodel",
+                "PyTorchMLPClassifier",
                 "--datadir",
                 "/allah/freqtrade/user_data/data/binance",
                 "--cache",
                 "none",
                 "--starting-balance",
-                "1000",
+                "100000",
             ]
 
             # config_1 = [
@@ -92,7 +94,7 @@ def main(sysargv: list[str] | None = None) -> None:
             #         "--strategy", "TEMA50TrailingStopStrategy",
             #         "--userdir", "/allah/stuff/freq/userdir",
             #         "--config", "/allah/stuff/freq/userdir/config.json",
-            #         "--timerange", "20241101-20241102",
+            #         "--timerange", "20240101-20241223",
             #         "--datadir", "/allah/freqtrade/user_data/data/binance",
             #         "--cache", "none",
             #         "--starting-balance", "10000",
