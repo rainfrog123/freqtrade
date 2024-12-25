@@ -6,7 +6,7 @@ from fastapi.exceptions import HTTPException
 
 from freqtrade import __version__
 from freqtrade.data.history import get_datahandler
-from freqtrade.enums import CandleType, TradingMode
+from freqtrade.enums import CandleType, State, TradingMode
 from freqtrade.exceptions import OperationalException
 from freqtrade.rpc import RPC
 from freqtrade.rpc.api_server.api_schemas import (
@@ -83,7 +83,8 @@ logger = logging.getLogger(__name__)
 # 2.34: new entries/exits/mix_tags endpoints
 # 2.35: pair_candles and pair_history endpoints as Post variant
 # 2.40: Add hyperopt-loss endpoint
-API_VERSION = 2.40
+# 2.41: Add download-data endpoint
+API_VERSION = 2.41
 
 # Public API, requires no auth.
 router_public = APIRouter()
@@ -216,7 +217,7 @@ def edge(rpc: RPC = Depends(get_rpc)):
 
 @router.get("/show_config", response_model=ShowConfig, tags=["info"])
 def show_config(rpc: RPC | None = Depends(get_rpc_optional), config=Depends(get_config)):
-    state = ""
+    state: State | str = ""
     strategy_version = None
     if rpc:
         state = rpc._freqtrade.state
@@ -356,6 +357,7 @@ def pair_history(
     config = deepcopy(config)
     config.update(
         {
+            "timeframe": timeframe,
             "strategy": strategy,
             "timerange": timerange,
             "freqaimodel": freqaimodel if freqaimodel else config.get("freqaimodel"),
@@ -376,6 +378,7 @@ def pair_history_filtered(
     config = deepcopy(config)
     config.update(
         {
+            "timeframe": payload.timeframe,
             "strategy": payload.strategy,
             "timerange": payload.timerange,
             "freqaimodel": (

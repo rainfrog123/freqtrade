@@ -960,7 +960,7 @@ async def test_telegram_balance_handle(default_conf, update, mocker, rpc_balance
     default_conf["dry_run"] = False
     mocker.patch(f"{EXMS}.get_balances", return_value=rpc_balance)
     mocker.patch(f"{EXMS}.get_tickers", tickers)
-    mocker.patch(f"{EXMS}.get_valid_pair_combination", side_effect=lambda a, b: f"{a}/{b}")
+    mocker.patch(f"{EXMS}.get_valid_pair_combination", side_effect=lambda a, b: [f"{a}/{b}"])
 
     telegram, freqtradebot, msg_mock = get_telegram_testobject(mocker, default_conf)
     patch_get_signal(freqtradebot)
@@ -1049,7 +1049,7 @@ async def test_telegram_balance_handle_futures(
     mocker.patch(f"{EXMS}.get_balances", return_value=rpc_balance)
     mocker.patch(f"{EXMS}.fetch_positions", return_value=mock_pos)
     mocker.patch(f"{EXMS}.get_tickers", tickers)
-    mocker.patch(f"{EXMS}.get_valid_pair_combination", side_effect=lambda a, b: f"{a}/{b}")
+    mocker.patch(f"{EXMS}.get_valid_pair_combination", side_effect=lambda a, b: [f"{a}/{b}"])
 
     telegram, freqtradebot, msg_mock = get_telegram_testobject(mocker, default_conf)
     patch_get_signal(freqtradebot)
@@ -1087,7 +1087,7 @@ async def test_balance_handle_empty_response_dry(default_conf, update, mocker) -
     result = msg_mock.call_args_list[0][0][0]
     assert msg_mock.call_count == 1
     assert "*Warning:* Simulated balances in Dry Mode." in result
-    assert "Starting capital: `1000 BTC`" in result
+    assert "Starting capital: `990 BTC`" in result
 
 
 async def test_balance_handle_too_large_response(default_conf, update, mocker) -> None:
@@ -2355,8 +2355,8 @@ def test_send_msg_exit_notification(default_conf, mocker) -> None:
             "*Direction:* `Long`\n"
             "*Amount:* `1333.33333333`\n"
             "*Open Rate:* `0.00075 ETH`\n"
-            "*Current Rate:* `0.00032 ETH`\n"
-            "*Exit Rate:* `0.00032 ETH`\n"
+            "*Current Rate:* `0.0003201 ETH`\n"
+            "*Exit Rate:* `0.0003201 ETH`\n"
             "*Duration:* `1:00:00 (60.0 min)`"
         )
 
@@ -2398,8 +2398,8 @@ def test_send_msg_exit_notification(default_conf, mocker) -> None:
             "*Direction:* `Long`\n"
             "*Amount:* `1333.33333333`\n"
             "*Open Rate:* `0.00075 ETH`\n"
-            "*Current Rate:* `0.00032 ETH`\n"
-            "*Exit Rate:* `0.00032 ETH`\n"
+            "*Current Rate:* `0.0003201 ETH`\n"
+            "*Exit Rate:* `0.0003201 ETH`\n"
             "*Remaining:* `0.01 ETH / -24.812 USD`"
         )
 
@@ -2437,8 +2437,8 @@ def test_send_msg_exit_notification(default_conf, mocker) -> None:
             "*Direction:* `Long`\n"
             "*Amount:* `1333.33333333`\n"
             "*Open Rate:* `0.00075 ETH`\n"
-            "*Current Rate:* `0.00032 ETH`\n"
-            "*Exit Rate:* `0.00032 ETH`\n"
+            "*Current Rate:* `0.0003201 ETH`\n"
+            "*Exit Rate:* `0.0003201 ETH`\n"
             "*Duration:* `1 day, 2:30:00 (1590.0 min)`"
         )
         # Reset singleton function to avoid random breaks
@@ -2536,7 +2536,7 @@ def test_send_msg_exit_fill_notification(
             f"{leverage_text}"
             "*Amount:* `1333.33333333`\n"
             "*Open Rate:* `0.00075 ETH`\n"
-            "*Exit Rate:* `0.00032 ETH`\n"
+            "*Exit Rate:* `0.0003201 ETH`\n"
             "*Duration:* `1 day, 2:30:00 (1590.0 min)`"
         )
 
@@ -2686,8 +2686,8 @@ def test_send_msg_exit_notification_no_fiat(
         f"{leverage_text}`\n"
         "*Amount:* `1333.33333333`\n"
         "*Open Rate:* `0.00075 ETH`\n"
-        "*Current Rate:* `0.00032 ETH`\n"
-        "*Exit Rate:* `0.00032 ETH`\n"
+        "*Current Rate:* `0.0003201 ETH`\n"
+        "*Exit Rate:* `0.0003201 ETH`\n"
         "*Duration:* `2:35:03 (155.1 min)`"
     )
 

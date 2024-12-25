@@ -3845,7 +3845,7 @@ def test_get_real_amount_no_trade(default_conf_usdt, buy_order_fee, caplog, mock
     assert log_has(
         "Applying fee on amount for Trade(id=None, pair=LTC/ETH, amount=8.00000000, "
         "is_short=False, leverage=1.0, open_rate=0.24544100, open_since=closed) failed: "
-        "myTrade-Dict empty found",
+        "myTrade-dict empty found",
         caplog,
     )
 
@@ -4021,7 +4021,7 @@ def test_get_real_amount_fees_order(
     default_conf_usdt, market_buy_order_usdt_doublefee, fee, mocker
 ):
     tfo_mock = mocker.patch(f"{EXMS}.get_trades_for_order", return_value=[])
-    mocker.patch(f"{EXMS}.get_valid_pair_combination", return_value="BNB/USDT")
+    mocker.patch(f"{EXMS}.get_valid_pair_combination", return_value=["BNB/USDT"])
     mocker.patch(f"{EXMS}.fetch_ticker", return_value={"last": 200})
     trade = Trade(
         pair="LTC/USDT",
