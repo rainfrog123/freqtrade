@@ -58,7 +58,9 @@ def _process_candles_and_indicators(
 
     try:
         logger.info(f"Processing {strategy_name} : {len(pairlist)} pairs")
-
+        for pair in trades["pair"].unique():
+            if pair not in pairlist:
+                pairlist.append(pair)
         for pair in pairlist:
             if pair in signal_candles[strategy_name]:
                 analysed_trades_dict[strategy_name][pair] = _analyze_candles_and_indicators(

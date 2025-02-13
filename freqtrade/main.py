@@ -60,7 +60,8 @@ def main(sysargv: list[str] | None = None) -> None:
     """
 
     # Initialize debug mode (set to 1 to enable, 0 to disable)
-    update_identifier_directly("/allah/stuff/freq/userdir/config_freqai.json")
+
+    # update_identifier_directly("/allah/stuff/freq/userdir/config_freqai.json")
     debug_input = 0
     if debug_input == 1:
         try:
@@ -70,36 +71,39 @@ def main(sysargv: list[str] | None = None) -> None:
             os.chdir(working_directory)
 
             config_1 = [
+                "backtesting-analysis",
+                "-c",
+                "/allah/stuff/freq/userdir/user_data/mutiple_coins_BT_v1.json",
+                "--userdir",
+                "/allah/stuff/freq/userdir/user_data",
+                "--indicator-list",
+                "trend",
+                "close_date",
+                "profit_ratio",
+                "--timerange",
+                "20241222-20241223",
+            ]
+
+            config_1 = [
                 "backtesting",
                 "--strategy",
-                "FreqAIDynamicClassifierStrategy",
+                "MultiTimeframeTEMAAgreement",
                 "--userdir",
-                "/allah/stuff/freq/userdir/",
+                "/allah/stuff/freq/userdir/user_data",
                 "--config",
-                "/allah/stuff/freq/userdir/config_freqai.json",
+                "/allah/stuff/freq/userdir/user_data/mutiple_coins_BT_v1_THEUSDT.json",
                 "--timerange",
-                "20240624-20241224",
-                "--freqaimodel",
-                "PyTorchMLPClassifier",
+                "20241222-20241223",
                 "--datadir",
                 "/allah/freqtrade/user_data/data/binance",
                 "--cache",
                 "none",
                 "--starting-balance",
-                "100000",
+                "10000",
+                "--eps",
+                "--export",
+                "signals",
             ]
-
-            # config_1 = [
-            #         "backtesting",
-            #         "--strategy", "TEMA50TrailingStopStrategy",
-            #         "--userdir", "/allah/stuff/freq/userdir",
-            #         "--config", "/allah/stuff/freq/userdir/config.json",
-            #         "--timerange", "20240101-20241223",
-            #         "--datadir", "/allah/freqtrade/user_data/data/binance",
-            #         "--cache", "none",
-            #         "--starting-balance", "10000",
-            #         "--eps"
-            #     ]
 
             sysargv = config_1
 

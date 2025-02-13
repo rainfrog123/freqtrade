@@ -1,6 +1,10 @@
+import json
 import logging
+import sys
+from datetime import datetime
+from pathlib import Path
 from time import time
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 import numpy.typing as npt
@@ -168,9 +172,9 @@ class BasePyTorchClassifier(BasePyTorchModel):
         """
 
         logger.info(f"-------------------- Starting training {pair} --------------------")
-
         start_time = time()
 
+        # Get filtered features and labels
         features_filtered, labels_filtered = dk.filter_features(
             unfiltered_df,
             dk.training_features_list,
@@ -178,18 +182,13 @@ class BasePyTorchClassifier(BasePyTorchModel):
             training_filter=True,
         )
 
-        # Save the dataframes to Parquet files
-        import os
+        # Export raw filtered data before any transformations
+        self.export_training_data(pair, features_filtered, labels_filtered)
 
-        directory_path = "/allah/data/parquet"
-        features_file_path = os.path.join(directory_path, "features_filtered.parquet")
-        labels_file_path = os.path.join(directory_path, "labels_filtered.parquet")
-        # features_filtered.to_parquet(features_file_path)
-        # labels_filtered.to_parquet(labels_file_path)
-        # print("Dataframes exported to Parquet successfully.")
-
-        # split data into train/test data.
+        # Split data into train/test data
         dd = dk.make_train_test_datasets(features_filtered, labels_filtered)
+
+        # Continue with regular training process
         if not self.freqai_info.get("fit_live_predictions_candles", 0) or not self.live:
             dk.fit_labels()
 
@@ -213,15 +212,6 @@ class BasePyTorchClassifier(BasePyTorchModel):
         )
         logger.info(f"Training model on {len(dd['train_features'])} data points")
 
-        train_features = dd["train_features"]
-        train_labels = dd["train_labels"]
-
-        # Assuming train_features and train_labels are pandas DataFrames
-        train_features.to_parquet(features_file_path)
-        train_labels.to_parquet(labels_file_path)
-
-        print("Train features and labels exported to Parquet successfully.")
-
         model = self.fit(dd, dk)
         end_time = time()
 
@@ -231,3 +221,48 @@ class BasePyTorchClassifier(BasePyTorchModel):
         )
 
         return model
+
+    def export_training_data(
+        self, pair: str, features_df: pd.DataFrame, labels_df: pd.DataFrame
+    ) -> None:
+        """
+        Export raw training data to parquet files before pipeline transformation
+        """
+        try:
+            # Save to fixed directory
+            save_dir = Path("/allah/data/parquet")
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save features and labels with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Save raw features
+            features_path = save_dir / f"{pair}_raw_features_{timestamp}.parquet"
+            features_df.to_parquet(features_path)
+
+            # Save raw labels
+            labels_path = save_dir / f"{pair}_raw_labels_{timestamp}.parquet"
+            labels_df.to_parquet(labels_path)
+
+            # Save metadata about the export
+            metadata = {
+                "timestamp": timestamp,
+                "pair": pair,
+                "features_shape": features_df.shape,
+                "labels_shape": labels_df.shape,
+                "features_columns": features_df.columns.tolist(),
+                "labels_columns": labels_df.columns.tolist(),
+            }
+
+            metadata_path = save_dir / f"{pair}_metadata_{timestamp}.json"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=4)
+
+            logger.info(f"Exported raw training data to {save_dir}")
+            logger.info(f"Features shape: {features_df.shape}")
+            logger.info(f"Labels shape: {labels_df.shape}")
+
+        except Exception as e:
+            logger.error(f"Failed to export training data: {e}")
+        finally:
+            sys.exit(0)
