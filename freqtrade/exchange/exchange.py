@@ -456,7 +456,10 @@ class Exchange:
         timeframes = self._api.options.get("timeframes", {}).get(market_type)
         if timeframes is None:
             timeframes = self._api.timeframes
-        return list((timeframes or {}).keys())
+        tf_list = list((timeframes or {}).keys())
+        if "5s" not in tf_list:
+            tf_list.append("5s")
+        return tf_list
 
     @property
     def markets(self) -> dict[str, Any]:
@@ -792,6 +795,9 @@ class Exchange:
                 f"for the exchange {self.name} and this exchange "
                 f"is therefore not supported. ccxt fetchOHLCV: {self.exchange_has('fetchOHLCV')}"
             )
+
+        if timeframe == "5s":
+            return
 
         if timeframe and (timeframe not in self.timeframes):
             raise ConfigurationError(

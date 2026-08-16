@@ -10,7 +10,7 @@ import logging
 from collections import defaultdict
 from contextlib import nullcontext
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from numpy import isnan, nan
@@ -27,6 +27,7 @@ from freqtrade.data.btanalysis import (
 )
 from freqtrade.data.converter import trim_dataframe, trim_dataframes
 from freqtrade.data.dataprovider import DataProvider
+from freqtrade.data.dataprovider_5s import DP5s
 from freqtrade.data.metrics import combined_dataframes_with_rel_mean
 from freqtrade.enums import (
     BacktestState,
@@ -170,8 +171,6 @@ class Backtesting:
             exchange = ExchangeResolver.load_exchange(self.config, load_leverage_tiers=True)
         self.exchange = exchange
 
-        self.dataprovider = DataProvider(self.config, self.exchange)
-
         if self.config.get("strategy_list"):
             if self.config.get("freqai", {}).get("enabled", False):
                 logger.warning(
@@ -188,6 +187,11 @@ class Backtesting:
             # No strategy list specified, only one strategy
             self.strategylist.append(StrategyResolver.load_strategy(self.config))
             validate_config_consistency(self.config)
+
+        if self.config.get("timeframe") == "5s":
+            self.dataprovider: DataProvider = DP5s(self.config, self.exchange)
+        else:
+            self.dataprovider = DataProvider(self.config, self.exchange)
 
         if "timeframe" not in self.config:
             raise OperationalException(
@@ -1866,6 +1870,9 @@ class Backtesting:
         )
         self.all_bt_content[strategy_name] = results
 
+        if self.config.get("export_ml_dataset", False):
+            self._ml_exports = self._export_ml_dataset(preprocessed_tmp, results, strategy_name)
+
         if self.config.get("export", "none") == "signals" and self._is_backtest_runmode:
             signals = generate_trade_signal_candles(preprocessed_tmp, results, "open_date")
             rejected = generate_rejected_signals(preprocessed_tmp, self.rejected_dict)
@@ -1876,6 +1883,94 @@ class Backtesting:
             self.analysis_results["exited"][strategy_name] = exited
 
         return min_date, max_date
+
+    def _export_ml_dataset(
+        self,
+        preprocessed_tmp: dict[str, DataFrame],
+        results: BacktestContentTypeIcomplete,
+        strategy_name: str,
+    ) -> list[tuple[str, int, int]]:
+        """Export ML dataset merging preprocessed data with trade results."""
+        import json
+        from pathlib import Path as _Path
+
+        import pandas as pd
+
+        trades_df = results.get("results", DataFrame())
+        if trades_df.empty:
+            logger.warning("No trades to export for ML dataset")
+            return []
+
+        ml_dir = _Path(self.config["datadir"]) / "ml"
+        ml_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        td = pd.Timedelta(seconds=self.timeframe_secs)
+        exported: list[tuple[str, int, int]] = []
+
+        for pair, df in preprocessed_tmp.items():
+            pt = trades_df[trades_df["pair"] == pair]
+
+            if pt.empty and not self.config.get("ml_export_empty_pairs", False):
+                continue
+
+            try:
+                df_ml = df.reset_index() if df.index.name == "date" else df.copy()
+
+                if not pt.empty:
+                    pt = pt.drop(columns=["pair"], errors="ignore").copy()
+                    pt["date"] = pd.to_datetime(pt["open_date"]) - td
+                    pt["is_winner"] = (pt["profit_ratio"] > 0).astype(int)
+                    pt["is_long"] = (~pt["is_short"]).astype(int) if "is_short" in pt.columns else 1
+                    pt["label"] = pt.apply(
+                        lambda r: (
+                            f"{'SHORT' if r.get('is_short', False) else 'LONG'}_"
+                            f"{'WIN' if r['profit_ratio'] > 0 else 'LOSE'}"
+                        ),
+                        axis=1,
+                    )
+                    trade_cols = [
+                        "date",
+                        "profit_ratio",
+                        "profit_abs",
+                        "is_winner",
+                        "is_long",
+                        "label",
+                        "trade_duration",
+                        "exit_reason",
+                        "open_rate",
+                        "close_rate",
+                    ]
+                    pt_clean = pt[[c for c in trade_cols if c in pt.columns]]
+                    df_ml = df_ml.merge(pt_clean, on="date", how="left", suffixes=("", "_trade"))
+
+                pair_slug = pair.replace("/", "_").replace(":", "_")
+                fp = ml_dir / f"{strategy_name}-{pair_slug}-{ts}.feather"
+                df_ml.to_feather(fp)
+
+                meta = {
+                    "strategy": strategy_name,
+                    "pair": pair,
+                    "timeframe": self.timeframe,
+                    "timerange": str(self.timerange),
+                    "total_candles": len(df_ml),
+                    "total_trades": len(pt),
+                    "winners": int(pt["is_winner"].sum()) if not pt.empty else 0,
+                    "losers": int((~pt["is_winner"].astype(bool)).sum()) if not pt.empty else 0,
+                }
+                with fp.with_suffix(".json").open("w") as f:
+                    json.dump(meta, f, indent=2)
+
+                exported.append((str(fp), len(pt), df_ml.shape[0]))
+                logger.info(
+                    "Exported ML dataset: %s (%s trades, %s candles)",
+                    fp.name,
+                    len(pt),
+                    df_ml.shape[0],
+                )
+            except Exception as e:
+                logger.error("Failed to export ML dataset for %s: %s", pair, e)
+
+        return exported
 
     def _get_min_cached_backtest_date(self):
         min_backtest_date = None
@@ -1976,3 +2071,6 @@ class Backtesting:
         if len(self.strategylist) > 0:
             # Show backtest results
             show_backtest_results(self.config, self.results)
+
+        for fp, trades, rows in getattr(self, "_ml_exports", []):
+            logger.info(f"ML: {fp} ({trades} trades, {rows} rows)")

@@ -18,6 +18,7 @@ from freqtrade.configuration import remove_exchange_credentials, validate_config
 from freqtrade.constants import BuySell, Config, EntryExecuteMode, ExchangeConfig, LongShort
 from freqtrade.data.converter import order_book_to_dataframe
 from freqtrade.data.dataprovider import DataProvider
+from freqtrade.data.dataprovider_5s import DP5s
 from freqtrade.enums import (
     ExitCheckTuple,
     ExitType,
@@ -32,6 +33,7 @@ from freqtrade.exceptions import (
     ExchangeError,
     InsufficientFundsError,
     InvalidOrderException,
+    OperationalException,
     PricingError,
 )
 from freqtrade.exchange import (
@@ -121,7 +123,10 @@ class FreqtradeBot(LoggingMixin):
             # Keep this at the end of this initialization method.
             self.rpc: RPCManager = RPCManager(self)
 
-            self.dataprovider = DataProvider(self.config, self.exchange, rpc=self.rpc)
+            if self.config.get("timeframe") == "5s":
+                self.dataprovider: DataProvider = DP5s(self.config, self.exchange, rpc=self.rpc)
+            else:
+                self.dataprovider = DataProvider(self.config, self.exchange, rpc=self.rpc)
             self.pairlists = PairListManager(self.exchange, self.config, self.dataprovider)
 
             self.dataprovider.add_pairlisthandler(self.pairlists)
@@ -892,6 +897,62 @@ class FreqtradeBot(LoggingMixin):
             logger.info(f"Bids to asks delta for {pair} does not satisfy condition.")
             return False
 
+    def _create_entry_order(
+        self,
+        *,
+        pair: str,
+        order_type: str,
+        side: BuySell,
+        amount: float,
+        rate: float,
+        time_in_force: str,
+        leverage: float,
+        initial_order: bool,
+    ) -> CcxtOrder:
+        """Place an entry order; retry on insufficient funds or post-only reject."""
+        current_rate = rate
+        for i in range(7):
+            try:
+                return self.exchange.create_order(
+                    pair=pair,
+                    ordertype=order_type,
+                    side=side,
+                    amount=amount * (1 - i * 0.05),
+                    rate=current_rate,
+                    reduceOnly=False,
+                    time_in_force=time_in_force,
+                    leverage=leverage,
+                    initial_order=initial_order,
+                )
+            except InsufficientFundsError:
+                if i >= 6:
+                    raise
+                reduced_amount = amount * (1 - (i + 1) * 0.05)
+                logger.warning(
+                    f"Insufficient funds for {pair}, "
+                    f"retrying with reduced amount {reduced_amount:.6f}"
+                )
+            except InvalidOrderException as e:
+                err = str(e)
+                if "Post Only" not in err and "5022" not in err and "post-only" not in err.lower():
+                    raise
+                if i >= 6:
+                    raise
+                try:
+                    orderbook = self.exchange.fetch_l2_order_book(pair, 1)
+                    current_rate = (
+                        orderbook["bids"][0][0] if side == "buy" else orderbook["asks"][0][0]
+                    )
+                    logger.warning(
+                        f"Post-Only rejected for {pair}, "
+                        f"retrying with fresh {'bid' if side == 'buy' else 'ask'} "
+                        f"price {current_rate:.8f} (attempt {i + 2}/7)"
+                    )
+                except (IndexError, KeyError) as ob_err:
+                    logger.warning(f"Could not fetch orderbook for {pair}: {ob_err}")
+                    raise e
+        raise OperationalException(f"Failed to create entry order for {pair}")
+
     def execute_entry(
         self,
         pair: str,
@@ -960,13 +1021,12 @@ class FreqtradeBot(LoggingMixin):
         if trade and self.handle_similar_open_order(trade, enter_limit_requested, amount, side):
             return False
 
-        order = self.exchange.create_order(
+        order = self._create_entry_order(
             pair=pair,
-            ordertype=order_type,
+            order_type=order_type,
             side=side,
             amount=amount,
             rate=enter_limit_requested,
-            reduceOnly=False,
             time_in_force=time_in_force,
             leverage=leverage,
             initial_order=trade is None,

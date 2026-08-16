@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from freqtrade.exchange import timeframe_to_minutes
+from freqtrade.exchange import timeframe_to_seconds
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -26,24 +26,24 @@ def _prepare_informative_pair(
     """Prepare an informative dataframe without merging it into a base dataframe."""
     informative = informative.copy()
 
-    minutes_inf = timeframe_to_minutes(timeframe_inf)
-    minutes = timeframe_to_minutes(timeframe)
-    if minutes == minutes_inf:
+    seconds_inf = timeframe_to_seconds(timeframe_inf)
+    seconds = timeframe_to_seconds(timeframe)
+    if seconds == seconds_inf:
         # No need to forwardshift if the timeframes are identical
         informative[date_merge_column] = informative[date_column]
-    elif minutes < minutes_inf:
+    elif seconds < seconds_inf:
         # Subtract "small" timeframe so merging is not delayed by 1 small candle
         # Detailed explanation in https://github.com/freqtrade/freqtrade/issues/4073
         if not informative.empty:
             if timeframe_inf == "1M":
                 informative[date_merge_column] = (
                     informative[date_column] + pd.offsets.MonthBegin(1)
-                ) - pd.to_timedelta(minutes, "m")
+                ) - pd.to_timedelta(seconds, "s")
             else:
                 informative[date_merge_column] = (
                     informative[date_column]
-                    + pd.to_timedelta(minutes_inf, "m")
-                    - pd.to_timedelta(minutes, "m")
+                    + pd.to_timedelta(seconds_inf, "s")
+                    - pd.to_timedelta(seconds, "s")
                 )
         else:
             informative[date_merge_column] = informative[date_column]
